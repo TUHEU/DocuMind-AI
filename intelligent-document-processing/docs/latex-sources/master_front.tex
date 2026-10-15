@@ -1,0 +1,45 @@
+\pagenumbering{roman}
+\chapter*{Document Control}
+\addcontentsline{toc}{chapter}{Document Control}
+\tblstart\small
+\begin{longtable}{L{3.4cm}L{11.0cm}}
+\hdrrow \hdr{Item} & \hdr{Description}\\ \endhead
+Purpose & Define the problem, scope, requirements, system design, UML models, data model, security, testing and implementation plan for \projname.\\
+Intended readers & Student developer, academic supervisor, evaluators and future maintainers.\\
+Version & \docversion{} (\docdate). Supersedes version 1.0, which used a 12-step roadmap and unlabelled diagrams.\\
+Status & Design specification plus an honest implementation-status chapter (Chapter~\ref{ch:status}). Performance targets are provisional until measured.\\
+Working name & \projname{} is a \emph{proposed} name. Check availability before any commercial use.\\
+Companion document & \emph{Phase 1 -- Requirements Analysis and Planning} (separate file) contains the complete Phase 1 deliverable.\\
+Primary technologies & Python, FastAPI, MySQL, Flutter Web, OpenCV, PyTorch, Docker; Kubernetes in a later stage.\\
+Important limitation & No OCR accuracy, ERP compatibility or performance result is claimed here. Such results must come from experiments.\\
+\hline
+\end{longtable}
+
+\begin{statusbox}[What changed in version 2.0]
+\begin{itemize}
+\item New colour theme and a consistent set of UML-style diagrams, drawn as editable TikZ code.
+\item The roadmap now follows the 18-phase plan; the prototype is limited to \textbf{invoices}.
+\item Requirements were extended (FR-21, FR-22) and linked to provisional success metrics.
+\item A new chapter records what is implemented, what is only written, and what is still planned.
+\end{itemize}
+\end{statusbox}
+\clearpage
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+Organisations receive invoices and other business documents as paper scans, PDFs and images. Manual data entry is slow, repetitive and prone to transcription errors. This project proposes \projname, an Intelligent Document Processing (IDP) and automated ERP ingestion system that accepts a document, improves its image quality, recognises its text, extracts structured fields, validates them, routes uncertain cases to a human reviewer and prepares approved records for an Enterprise Resource Planning (ERP) system.
+
+The solution combines a trainable optical character recognition (OCR) component with explicit extraction and validation rules. Image preprocessing uses OpenCV; text recognition is developed with PyTorch using a CRNN network trained with Connectionist Temporal Classification (CTC) loss. French and English are the target languages, and the first prototype is limited to invoices. An established OCR engine serves as a baseline so that the custom model can be evaluated honestly. The backend uses FastAPI and MySQL; a Flutter Web dashboard supports upload, review and monitoring. The system starts as a modular monolith, is containerised with Docker, and is separated into services and deployed on Kubernetes only after the interfaces are stable.
+
+This document specifies requirements, architecture, UML models, data design, security, testing and a phased plan. Measured results will replace the provisional targets once experiments have been run.
+
+\medskip\noindent\textbf{Keywords:} intelligent document processing, OCR, information extraction, human-in-the-loop, ERP integration, FastAPI, Flutter, MySQL, PyTorch.
+\clearpage
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}

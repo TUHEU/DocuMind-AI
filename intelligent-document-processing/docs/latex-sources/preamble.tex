@@ -1,0 +1,161 @@
+% ============================================================
+%  Shared preamble: colours, typography, boxes, tables, UML/TikZ styles
+% ============================================================
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathpazo}
+\usepackage[scaled=0.92]{helvet}
+\usepackage[a4paper,margin=2.4cm,headheight=15pt]{geometry}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{array,booktabs,longtable,tabularx,multirow}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage[font=small,labelfont={bf,color=navy},textfont=it,skip=6pt]{caption}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.multipart,shapes.misc,fit,backgrounds,calc,decorations.pathreplacing,patterns}
+\usepackage{pgfgantt}
+\usepackage[most]{tcolorbox}
+\usepackage[colorlinks=true,linkcolor=teal,urlcolor=teal,citecolor=teal]{hyperref}
+
+% ---------- Colour palette ----------
+\definecolor{navy}{HTML}{0B2545}
+\definecolor{teal}{HTML}{0E8F9C}
+\definecolor{tealdark}{HTML}{0A6B75}
+\definecolor{amber}{HTML}{F2A33A}
+\definecolor{coral}{HTML}{D9534F}
+\definecolor{violet}{HTML}{6C4FA1}
+\definecolor{leaf}{HTML}{3E9B5F}
+\definecolor{mist}{HTML}{EEF3F8}
+\definecolor{mint}{HTML}{DDF3F1}
+\definecolor{sand}{HTML}{FDF1DC}
+\definecolor{blush}{HTML}{FBE3E1}
+\definecolor{lilac}{HTML}{E9E3F5}
+\definecolor{slate}{HTML}{4A5568}
+\definecolor{rowgray}{HTML}{F3F6FA}
+
+% ---------- Project macros (change here only) ----------
+\newcommand{\projname}{DocuMind AI}
+\newcommand{\projfull}{Intelligent Document Processing and Automated ERP Ingestion System}
+\newcommand{\studentname}{Tuheu Tchoubi Pempeme Moussa Fahdil}
+\newcommand{\supervisorname}{[Supervisor name -- to be completed]}
+\newcommand{\docversion}{2.0}
+\newcommand{\docdate}{October 2026}
+
+% ---------- Headings ----------
+\titleformat{\chapter}[display]
+  {\sffamily\bfseries\color{navy}}
+  {\vspace*{-0.5cm}\color{teal}\fontsize{54}{54}\selectfont\thechapter}
+  {0.2cm}
+  {\Huge}
+  [\vspace{2pt}{\color{teal}\titlerule[2.2pt]}]
+\titlespacing*{\chapter}{0pt}{0pt}{26pt}
+\titleformat{\section}{\sffamily\Large\bfseries\color{navy}}{\color{teal}\thesection}{0.6em}{}
+\titleformat{\subsection}{\sffamily\large\bfseries\color{tealdark}}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\sffamily\normalsize\bfseries\color{slate}}{\thesubsubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{16pt}{6pt}
+\titlespacing*{\subsection}{0pt}{12pt}{4pt}
+
+% ---------- Header / footer ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.6pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{teal}\leaders\hrule height \headrulewidth\hfill}}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\small\sffamily\color{navy}\projname}
+\fancyhead[R]{\small\sffamily\color{slate}\nouppercase{\leftmark}}
+\fancyfoot[C]{\small\sffamily\color{slate}\thepage}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\small\sffamily\color{slate}\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+% ---------- Lists, spacing ----------
+\setlist{itemsep=2pt,topsep=4pt,parsep=0pt}
+\setlist[itemize]{label=\textcolor{teal}{\textbullet}}
+\setlist[enumerate]{label=\textcolor{teal}{\bfseries\arabic*.}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\renewcommand{\arraystretch}{1.25}
+\setcounter{tocdepth}{2}
+
+% ---------- Call-out boxes ----------
+\tcbset{calloutbase/.style={enhanced,breakable,sharp corners,boxrule=0pt,leftrule=3.5pt,
+  left=8pt,right=8pt,top=6pt,bottom=6pt,fonttitle=\sffamily\bfseries,coltitle=navy,
+  attach boxed title to top left={yshift=-2mm},
+  boxed title style={colback=white,boxrule=0pt,top=0pt,bottom=0pt,left=0pt}}}
+\newtcolorbox{infobox}[1][Note]{calloutbase,colback=mint,colframe=teal,title={#1}}
+\newtcolorbox{warnbox}[1][Important]{calloutbase,colback=sand,colframe=amber,title={#1}}
+\newtcolorbox{statusbox}[1][Status]{calloutbase,colback=lilac,colframe=violet,title={#1}}
+\newtcolorbox{goalbox}[1][Goal]{calloutbase,colback=mist,colframe=navy,title={#1}}
+
+% ---------- Tables ----------
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcommand{\hdr}[1]{\textcolor{white}{\sffamily\bfseries #1}}
+\newcommand{\tblstart}{\rowcolors{2}{white}{rowgray}\arrayrulecolor{teal!60}}
+\newcommand{\hdrrow}{\rowcolor{navy}}
+\newcommand{\must}{\textcolor{coral}{\sffamily\bfseries Must}}
+\newcommand{\should}{\textcolor{amber!85!black}{\sffamily\bfseries Should}}
+\newcommand{\could}{\textcolor{tealdark}{\sffamily\bfseries Could}}
+\newcommand{\wont}{\textcolor{slate}{\sffamily\bfseries Won't (now)}}
+\newcommand{\done}{\textcolor{leaf}{\sffamily\bfseries Done}}
+\newcommand{\inprog}{\textcolor{amber!85!black}{\sffamily\bfseries Partial}}
+\newcommand{\todo}{\textcolor{slate}{\sffamily\bfseries Planned}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+% ---------- Code listings ----------
+\lstdefinestyle{docu}{basicstyle=\ttfamily\footnotesize,backgroundcolor=\color{mist},
+  frame=l,rulecolor=\color{teal},framerule=3pt,xleftmargin=10pt,framexleftmargin=6pt,
+  keywordstyle=\color{tealdark}\bfseries,commentstyle=\color{slate}\itshape,
+  stringstyle=\color{violet},showstringspaces=false,breaklines=true,columns=fullflexible,
+  aboveskip=8pt,belowskip=8pt}
+\lstset{style=docu}
+
+% ---------- TikZ / UML styles ----------
+\tikzset{
+  every picture/.append style={font=\sffamily\small},
+  box/.style={rectangle,rounded corners=3pt,draw=navy,line width=0.7pt,fill=mist,align=center,
+              minimum height=0.8cm,inner sep=4pt},
+  boxT/.style={box,fill=mint,draw=tealdark},
+  boxA/.style={box,fill=sand,draw=amber!80!black},
+  boxV/.style={box,fill=lilac,draw=violet},
+  boxC/.style={box,fill=blush,draw=coral},
+  boxN/.style={box,fill=navy,draw=navy,text=white},
+  arr/.style={-{Stealth[length=2.6mm,width=1.9mm]},line width=0.7pt,color=navy},
+  arrd/.style={-{Stealth[length=2.6mm,width=1.9mm]},line width=0.7pt,color=slate,dashed},
+  lbl/.style={font=\sffamily\scriptsize,color=slate,fill=white,inner sep=1.2pt},
+  state/.style={rectangle,rounded corners=8pt,draw=tealdark,fill=mint,line width=0.8pt,
+                minimum width=2.5cm,minimum height=0.9cm,align=center,font=\sffamily\footnotesize\bfseries},
+  stateA/.style={state,fill=sand,draw=amber!80!black},
+  stateC/.style={state,fill=blush,draw=coral},
+  stateV/.style={state,fill=lilac,draw=violet},
+  initial/.style={circle,fill=navy,minimum size=0.35cm,inner sep=0pt},
+  final/.style={circle,draw=navy,line width=0.9pt,minimum size=0.5cm,inner sep=0pt,
+                path picture={\fill[navy] (path picture bounding box.center) circle (0.17cm);}},
+  uclass/.style={rectangle split,rectangle split parts=3,draw=navy,line width=0.8pt,fill=white,
+                 font=\sffamily\scriptsize,text width=3.55cm,inner sep=3pt,align=left,
+                 rectangle split part fill={mint,white,white}},
+  uclass2/.style={rectangle split,rectangle split parts=2,draw=navy,line width=0.8pt,fill=white,
+                 font=\sffamily\scriptsize,text width=3.55cm,inner sep=3pt,align=left,
+                 rectangle split part fill={mint,white}},
+  uiface/.style={uclass2,rectangle split part fill={sand,white}},
+  uenum/.style={uclass2,rectangle split part fill={lilac,white}},
+  ucase/.style={ellipse,draw=tealdark,fill=mint,line width=0.7pt,align=center,
+                font=\sffamily\scriptsize,minimum height=0.8cm,inner xsep=3pt},
+  lifeline/.style={dashed,color=slate,line width=0.6pt},
+  msg/.style={-{Stealth[length=2.4mm,width=1.7mm]},line width=0.65pt,color=navy},
+  ret/.style={-{Stealth[length=2.4mm,width=1.7mm]},line width=0.65pt,color=slate,dashed},
+}
+% stick-figure actor: \actor{name}{x}{y}{label}
+\newcommand{\actor}[4]{%
+  \begin{scope}[shift={(#2,#3)},color=navy,line width=0.9pt]
+    \draw[fill=sand] (0,0.95) circle (0.2);
+    \draw (0,0.75)--(0,0.1) (-0.35,0.55)--(0.35,0.55) (0,0.1)--(-0.28,-0.4) (0,0.1)--(0.28,-0.4);
+    \node[font=\sffamily\scriptsize\bfseries,text=navy,align=center,below] (#1) at (0,-0.38) {#4};
+  \end{scope}}
+% class-name helper (centred bold)
+\newcommand{\cname}[1]{\centerline{\bfseries #1}}
+\newcommand{\stereo}[1]{\guillemotleft\,#1\,\guillemotright}

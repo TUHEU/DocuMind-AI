@@ -1,0 +1,22 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\draw[rounded corners=6pt,fill=mist,draw=navy,line width=0.8pt] (3.0,-0.4) rectangle (14.0,10.9);
+\node[font=\sffamily\bfseries\small,text=navy] at (8.5,10.5) {\projname{} system};
+\node[ucase,minimum width=4.4cm] (u1) at (6.6,9.3)  {Upload document};
+\node[ucase,minimum width=4.4cm] (u2) at (6.6,8.0)  {Track status and search documents};
+\node[ucase,minimum width=4.4cm] (u3) at (6.6,6.7)  {Review and correct fields};
+\node[ucase,minimum width=4.4cm] (u4) at (6.6,5.4)  {Approve or reject record};
+\node[ucase,minimum width=4.4cm] (u5) at (6.6,4.1)  {Submit approved record to ERP};
+\node[ucase,minimum width=4.4cm] (u6) at (6.6,2.8)  {View audit trail and metrics};
+\node[ucase,minimum width=4.4cm] (u7) at (6.6,1.5)  {Configure rules and thresholds};
+\node[ucase,minimum width=4.4cm] (u8) at (6.6,0.2)  {Manage users and roles};
+\node[ucase,minimum width=2.3cm,fill=sand,draw=amber!80!black] (v1) at (12.2,9.3) {Validate file};
+\node[ucase,minimum width=2.3cm,fill=sand,draw=amber!80!black] (v2) at (12.2,4.1) {Validate ERP payload};
+\draw[arrd] (u1) -- node[lbl,above]{\stereo{include}} (v1);
+\draw[arrd] (u5) -- node[lbl,above]{\stereo{include}} (v2);
+\actor{op}{1.2}{8.1}{Document\\operator}
+\actor{rv}{1.2}{4.8}{Reviewer /\\accountant}
+\actor{ad}{1.2}{1.0}{Administrator /\\supervisor}
+\node[box,fill=blush,draw=coral,minimum width=1.9cm,minimum height=1.4cm,align=center] (erp) at (15.9,4.1) {\stereo{system}\\\textbf{ERP / Odoo}\\(or mock API)};
+\foreach \a/\u in {op/u1,op/u2, rv/u2,rv/u3,rv/u4, ad/u6,ad/u7,ad/u8, rv/u6}{\draw[color=navy,line width=0.6pt] (\a) -- (\u);}
+\draw[color=navy,line width=0.6pt] (erp.west) -- (14.0,4.1) -- (v2.east);
+\end{tikzpicture}

@@ -1,0 +1,16 @@
+\begin{tikzpicture}[x=1cm,y=1cm,node distance=0.55cm]
+\node[boxN,text width=1.9cm,minimum height=1.2cm] (n1) at (1.1,0) {PDF / image\\ input};
+\node[boxT,text width=1.9cm,minimum height=1.2cm] (n2) at (3.7,0) {Page\\ rendering};
+\node[boxT,text width=1.9cm,minimum height=1.2cm] (n3) at (6.3,0) {Pre-\\processing};
+\node[boxT,text width=1.9cm,minimum height=1.2cm] (n4) at (8.9,0) {Line\\ segmentation};
+\node[boxA,text width=1.9cm,minimum height=1.2cm] (n5) at (11.5,0) {Recognition\\ CRNN + CTC};
+\node[boxA,text width=1.9cm,minimum height=1.2cm] (n6) at (14.1,0) {Post-\\processing};
+\node[boxV,text width=1.9cm,minimum height=1.2cm] (n7) at (14.1,-3.0) {Field\\ extraction};
+\node[boxV,text width=1.9cm,minimum height=1.2cm] (n8) at (11.5,-3.0) {Validation\\ + confidence};
+\node[boxC,text width=1.9cm,minimum height=1.2cm] (n9) at (8.9,-3.0) {Human\\ review};
+\node[boxN,text width=1.9cm,minimum height=1.2cm] (n10) at (6.3,-3.0) {Approved\\ record};
+\foreach \a/\b in {n1/n2,n2/n3,n3/n4,n4/n5,n5/n6,n6/n7,n7/n8,n8/n9,n9/n10}{\draw[arr] (\a) -- (\b);}
+\node[font=\sffamily\scriptsize,text=slate,text width=5.6cm,align=left,anchor=north west] at (3.4,-4.6) {\textbf{Preprocessing steps:} grayscale $\rightarrow$ denoise $\rightarrow$ contrast normalisation $\rightarrow$ deskew $\rightarrow$ thresholding (only when it helps) $\rightarrow$ resize};
+\node[font=\sffamily\scriptsize,text=slate,text width=5.6cm,align=left,anchor=north west] at (9.6,-4.6) {\textbf{Baseline comparison:} the same lines are also passed to Tesseract; CER and WER are computed on one held-out test set.};
+\draw[decorate,decoration={brace,amplitude=4pt,mirror},color=tealdark,line width=0.8pt] (2.7,-0.8) -- (9.9,-0.8) node[midway,below=5pt,font=\sffamily\scriptsize,text=tealdark] {image preparation};
+\end{tikzpicture}

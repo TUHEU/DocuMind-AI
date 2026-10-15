@@ -1,0 +1,25 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[box,fill=mist,minimum width=2.2cm] (usr) at (1.1,5.4) {\textbf{Users}\\\scriptsize browser};
+\draw[rounded corners=6pt,fill=mist,draw=navy,line width=0.9pt] (2.7,-0.6) rectangle (15.6,8.6);
+\node[font=\sffamily\bfseries\scriptsize,text=navy,anchor=north west] at (2.9,8.5) {Kubernetes cluster -- namespace \texttt{documind}};
+\node[boxC,text width=1.9cm,minimum height=1.0cm] (ing) at (4.3,5.4) {\textbf{Ingress}\\\scriptsize TLS, routing};
+\node[boxT,text width=2.6cm,minimum height=1.3cm] (sw) at (7.9,7.2) {\textbf{Deployment: web}\\\scriptsize Service :80};
+\node[boxA,text width=2.6cm,minimum height=1.3cm] (sa) at (7.9,5.4) {\textbf{Deployment: api}\\\scriptsize Service :8000, probes};
+\node[boxA,text width=2.6cm,minimum height=1.3cm] (sk) at (7.9,3.4) {\textbf{Deployment: ocr-worker}\\\scriptsize scaled by queue depth};
+\node[boxV,text width=2.6cm,minimum height=1.3cm] (sd) at (11.8,3.9) {\textbf{MySQL}\\\scriptsize managed, or StatefulSet + PVC};
+\node[boxV,text width=2.6cm,minimum height=1.3cm] (sq) at (11.8,1.5) {\textbf{StatefulSet: RabbitMQ}\\\scriptsize PVC};
+\node[box,text width=2.4cm] (cm) at (11.6,7.3) {\textbf{ConfigMap}\\\scriptsize thresholds, URLs};
+\node[box,text width=2.4cm,fill=sand,draw=amber!80!black] (sec) at (14.3,7.3) {\textbf{Secret}\\\scriptsize DB and ERP keys};
+\node[box,text width=2.4cm] (pvc) at (7.9,0.8) {\textbf{PVC}\\\scriptsize document storage};
+\node[boxC,minimum width=2.2cm] (erp) at (18.4,5.4) {\textbf{ERP / Odoo}\\\scriptsize external};
+\draw[arr] (usr) -- (ing);
+\draw[arr] (ing) -- (sw.west);
+\draw[arr] (ing) -- (sa);
+\draw[arr] (sa.south east) -- (sd.north west);
+\draw[arr] (sa.south east) -- (sq.north west);
+\draw[arr] (sk.east) -- (sq.west);
+\draw[arrd] (sk.south) -- (pvc.north);
+\draw[arr] (sa.east) -- node[lbl,above,pos=0.55]{HTTPS API} (erp.west);
+\draw[arrd] (cm.south west) -- (sa.north east);
+\draw[arrd] (sec.south west) -- (sa.north east);
+\end{tikzpicture}

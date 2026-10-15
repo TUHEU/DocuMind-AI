@@ -1,0 +1,162 @@
+\chapter{OCR, Extraction and Validation Design}
+\section{OCR versus Document Understanding}
+OCR identifies characters or words in an image. Extraction decides which recognised values correspond to business fields. Validation checks whether those values are plausible and consistent. Keeping these three stages separate lets each be tested independently.
+
+\section{Processing Pipeline}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_pipeline}}
+\caption{End-to-end processing pipeline. The same segmented lines feed both the custom recogniser and the baseline engine.}\label{fig:pipeline}
+\end{figure}
+\begin{enumerate}
+\item \textbf{Input inspection:} file type, page count, dimensions, rotation, basic quality.
+\item \textbf{PDF rendering:} render each page at a suitable resolution while keeping the original file.
+\item \textbf{Preprocessing:} grayscale, denoising, contrast normalisation, skew correction, thresholding when helpful, resizing.
+\item \textbf{Text segmentation:} the first prototype uses a constrained line-based approach; complex layouts need more robust detection.
+\item \textbf{Recognition:} a CRNN with CTC loss, or a justified alternative after experiments.
+\item \textbf{Post-processing:} normalise whitespace and common confusions without silently altering source evidence.
+\item \textbf{Field extraction:} labels, layout positions, patterns and rules propose invoice fields.
+\item \textbf{Confidence and review:} combine confidence with validation outcomes and route uncertain cases to a reviewer.
+\end{enumerate}
+
+\section{Custom Recognition Model}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_crnn}}
+\caption{CRNN recogniser with CTC loss. Dimensions are indicative and will be tuned experimentally.}\label{fig:crnn}
+\end{figure}
+A CRNN combines a convolutional feature extractor, a bidirectional recurrent layer for sequence context and a character classifier. CTC loss allows training without character-level alignment:
+\[
+\mathcal{L}_{\text{CTC}} = -\log P(y\mid x),
+\]
+where $x$ is the input line image and $y$ the target text. The alphabet must cover French and English letters (including accents), digits, punctuation and business symbols.
+
+\subsection{Dataset requirements}
+\begin{itemize}
+\item Representative invoice images with verified transcriptions.
+\item Training, validation and test sets separated \emph{by document or source}, not by random crops of the same page.
+\item Clean and degraded examples: low contrast, skew, noise, different fonts, stamps and scan artefacts.
+\item Metadata: language, document type, image size and preprocessing settings.
+\item Personal or confidential content removed or protected; dataset, label and model versions tracked.
+\end{itemize}
+
+\subsection{Evaluation metrics}
+Character error rate and word error rate are
+\[
+\mathrm{CER}=\frac{S+D+I}{N},\qquad \mathrm{WER}=\frac{S_w+D_w+I_w}{N_w},
+\]
+with substitutions $S$, deletions $D$, insertions $I$ and reference length $N$ (characters or words). Both models are evaluated on the same held-out set. A lower value is better, and no number is written into the final report before the experiment has been run.
+
+\section{Field Extraction Strategy}
+For invoices the candidate fields are supplier name and tax identifier, invoice number, invoice and due dates, currency, subtotal, tax, total and purchase-order reference (Phase~1 specification, Table of invoice fields). Regular expressions handle constrained patterns; keyword anchors (``Invoice No.'', ``Facture N\textdegree'') and page coordinates locate values; arithmetic rules cross-check amounts. Each field keeps the text span or coordinates that support it, which is what the review screen highlights (FR-22).
+
+\section{Validation Rules}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{6.3cm}L{4.5cm}}
+\hdrrow \hdr{Rule} & \hdr{Example check} & \hdr{Outcome}\\ \endhead
+Required fields & Invoice number, supplier, date and total are present. & Missing field becomes a review finding.\\
+Date parsing & Date parses under configured formats and a plausible range. & Invalid or ambiguous date flagged.\\
+Numeric parsing & Amounts normalised using locale conventions (space or dot thousands). & Unparseable amount flagged.\\
+Arithmetic & Subtotal + tax $\approx$ total within a configured tolerance. & Mismatch flagged, never auto-corrected.\\
+Currency & Symbols and codes agree across fields. & Inconsistency flagged.\\
+Duplicate indicator & Supplier, invoice number, date, amount, optional file hash. & Likely duplicate flagged.\\
+ERP schema & Approved values satisfy the ERP payload schema. & Invalid payload blocked before sending.\\
+\hline
+\end{longtable}}
+
+\section{Confidence Policy}
+Confidence is a decision signal, not a guarantee. Thresholds are set empirically on validation data, never on the test set. A possible policy: high-confidence fields without rule violations are shown as accepted; medium-confidence fields are highlighted; low-confidence fields and critical validation failures require human review. In the prototype, human approval before ERP submission is mandatory.
+
+\chapter{Data Design}
+\section{Principles}
+MySQL stores structured application data, not public copies of uploaded files. Originals live in protected storage (a private directory in development, private object storage in deployment). The database keeps the storage key, checksum, file metadata, status, extracted fields and audit data. File contents are never placed in a public web directory and internal paths are never exposed by the API.
+
+\section{Entity-Relationship Diagram}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_er}}
+\caption{Logical ER diagram (PK = primary key, FK = foreign key). Final constraints and indexes are fixed when the schema is implemented.}\label{fig:er}
+\end{figure}
+
+\section{Entity Descriptions}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{10.8cm}}
+\hdrrow \hdr{Entity} & \hdr{Purpose and key fields}\\ \endhead
+User & Identity and role. A password hash is stored only if local passwords are used; never plaintext.\\
+Document & One uploaded source document: storage key, SHA-256, MIME type, size, uploader, timestamps and current workflow status.\\
+ProcessingRun & One attempt to process a document: preprocessing configuration, OCR model version, start/end time, status and error category.\\
+ExtractedField & A candidate field of a run: name, raw and normalised value, confidence, page/region evidence and validation status.\\
+Review & Human decision with reviewer, notes, timestamp and references to before/after values.\\
+ERPAttempt & Each outbound attempt: idempotency key, destination, sanitised request/response metadata, external reference, status.\\
+AuditEvent & Append-only record of upload, correction, approval, rejection, configuration changes and ERP submission.\\
+\hline
+\end{longtable}}
+
+\section{Schema Excerpt}
+The following MySQL excerpt illustrates intended constraints. It is a design sketch to be implemented with Alembic migrations, not a deployed schema.
+\begin{lstlisting}[language=SQL]
+CREATE TABLE documents (
+  document_id  CHAR(36)     PRIMARY KEY,
+  uploaded_by  CHAR(36)     NOT NULL,
+  storage_key  VARCHAR(255) NOT NULL,
+  sha256       CHAR(64)     NOT NULL,
+  mime_type    VARCHAR(100) NOT NULL,
+  size_bytes   BIGINT       NOT NULL,
+  status       VARCHAR(20)  NOT NULL,
+  created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (uploaded_by) REFERENCES users(user_id),
+  INDEX idx_documents_status (status),
+  INDEX idx_documents_sha256 (sha256)
+);
+CREATE TABLE erp_attempts (
+  attempt_id       CHAR(36)    PRIMARY KEY,
+  document_id      CHAR(36)    NOT NULL,
+  idempotency_key  VARCHAR(80) NOT NULL UNIQUE,
+  status           VARCHAR(20) NOT NULL,
+  external_ref     VARCHAR(100),
+  FOREIGN KEY (document_id) REFERENCES documents(document_id)
+);
+\end{lstlisting}
+
+\section{Integrity and Indexes}
+Use primary and foreign keys, non-null constraints for required values, a unique constraint on user e-mail and on the idempotency key, and indexes on document status, creation date, file hash and processing status. Duplicate-invoice detection is a \emph{business rule} rather than only a unique constraint, because extracted data may be incomplete. Schema changes go through migrations.
+
+\chapter{API Design}
+\section{Conventions}
+REST-style endpoints with JSON, multipart form data for uploads, a consistent error format and versioned routes under \texttt{/api/v1}. Input is validated with Pydantic schemas. A document identifier is returned immediately and OCR runs asynchronously.
+
+{\tblstart\small
+\begin{longtable}{L{1.7cm}L{6.0cm}L{6.1cm}}
+\hdrrow \hdr{Method} & \hdr{Endpoint} & \hdr{Purpose}\\ \endhead
+GET & \texttt{/api/v1/health} & Liveness; implemented in the current backend.\\
+GET & \texttt{/api/v1/health/db} & Readiness (database reachable); implemented.\\
+POST & \texttt{/api/v1/auth/login} & Authenticate and return a token.\\
+POST & \texttt{/api/v1/documents} & Upload a document and create a job.\\
+GET & \texttt{/api/v1/documents} & List and filter permitted documents.\\
+GET & \texttt{/api/v1/documents/\{id\}} & Metadata, status and processing summary.\\
+GET & \texttt{/api/v1/documents/\{id\}/result} & Extracted fields, confidence, findings.\\
+GET & \texttt{/api/v1/documents/\{id\}/file} & Source file, after authorisation.\\
+PATCH & \texttt{/api/v1/documents/\{id\}/fields} & Save reviewer corrections with audit data.\\
+POST & \texttt{/api/v1/documents/\{id\}/approve} & Approve after authorisation and checks.\\
+POST & \texttt{/api/v1/documents/\{id\}/reject} & Reject with a reason.\\
+POST & \texttt{/api/v1/documents/\{id\}/submit} & Submit an approved record to the ERP adapter.\\
+POST & \texttt{/api/v1/documents/\{id\}/reprocess} & Start a new processing run (FR-21).\\
+\hline
+\end{longtable}}
+
+\section{Illustrative Response}
+\begin{lstlisting}[language=Python,morekeywords={true,false}]
+{
+  "document_id": "doc_example_id",
+  "status": "NEEDS_REVIEW",
+  "document_type": "invoice",
+  "fields": [
+    {"name": "invoice_number", "value": "INV-2026-001",
+     "confidence": 0.91, "validation": "PASS"},
+    {"name": "total_amount", "value": "125000",
+     "confidence": 0.68, "validation": "REVIEW"}
+  ],
+  "review_required": true
+}
+\end{lstlisting}
+This is an illustrative contract, not output of an implemented endpoint.
+
+\section{Error Handling}
+Use 400 for malformed requests, 401 unauthenticated, 403 insufficient permissions, 404 missing or inaccessible resources, 409 conflicting state transitions, 413 oversized uploads, 415 unsupported media types and 500 for unexpected errors. Responses must not expose stack traces, credentials, file-system paths or sensitive internals.

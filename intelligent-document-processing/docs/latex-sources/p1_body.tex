@@ -1,0 +1,436 @@
+\chapter{Purpose and Summary}
+\section{Purpose of this document}
+Phase 1 answers four questions before any serious development starts: \emph{what problem are we solving, for whom, within which limits, and how will we know we succeeded?} The answers are written as testable requirements so that design (Phase 2), implementation and evaluation can all be traced back to them.
+
+\section{Project in one paragraph}
+\projname{} receives supplier invoices (PDF, PNG or JPEG) in French or English, improves image quality, recognises the text with a custom-trained OCR model compared against an established baseline, extracts the key invoice fields, validates them with business rules, asks a human reviewer to confirm uncertain values, and finally sends approved records to an ERP system (a mock or sandbox first, Odoo as target) with a complete audit trail.
+
+\section{Phase 1 at a glance}
+{\tblstart\small
+\begin{longtable}{L{4.0cm}L{9.8cm}}
+\hdrrow \hdr{Topic} & \hdr{Position taken in this document}\\ \endhead
+Document type & Invoices only for the prototype; other documents are later extensions.\\
+Languages & French and English.\\
+Input formats & PDF, PNG, JPEG.\\
+Human review & Mandatory before any ERP submission.\\
+ERP target & Mock ERP first; Odoo when access and version are confirmed.\\
+OCR & Custom CRNN + CTC model, evaluated honestly against Tesseract.\\
+Architecture & Modular monolith first, then Docker Compose, then services and Kubernetes.\\
+Requirements & 22 functional and 10 non-functional requirements with acceptance criteria.\\
+\hline
+\end{longtable}}
+
+\chapter{Problem Analysis}
+\section{Current situation (as-is)}
+Invoices arrive by e-mail, on paper or as scans. An employee reads each one and types the values into the ERP by hand, usually without a systematic check and without a record of who changed what.
+
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_asis_tobe}}
+\caption{Manual process (as-is) compared with the proposed workflow (to-be).}\label{fig:asis}
+\end{figure}
+
+\section{Problems identified}
+{\tblstart\small
+\begin{longtable}{L{1.0cm}L{4.0cm}L{8.7cm}}
+\hdrrow \hdr{ID} & \hdr{Problem} & \hdr{Consequence}\\ \endhead
+P1 & Manual re-typing & Slow, repetitive work that does not scale with volume.\\
+P2 & Transcription errors & Wrong amounts, dates or supplier data enter the ERP.\\
+P3 & No systematic validation & Totals that do not match subtotal plus tax go unnoticed.\\
+P4 & Duplicate invoices & The same invoice may be paid twice.\\
+P5 & No audit trail & Corrections cannot be traced to a person or a reason.\\
+P6 & Documents hard to retrieve & Originals are scattered across mailboxes and folders.\\
+\hline
+\end{longtable}}
+
+\section{Proposed solution (to-be)}
+Automate the repetitive steps (reading, extracting, cross-checking) and keep the human where judgement matters (resolving uncertainty, approving). Every document and every correction is stored with identifiers and timestamps.
+
+\section{System context}
+\begin{figure}[H]\centering
+\resizebox{0.95\textwidth}{!}{\input{figs/fig_context}}
+\caption{Context diagram: the system, its users and external systems.}\label{fig:context}
+\end{figure}
+
+\chapter{Objectives and Success Criteria}
+\section{Aim}
+To design and implement a secure, modular system that extracts structured information from French and English invoices and prepares validated records for ERP ingestion.
+
+\section{Objectives with measurable success criteria}
+{\tblstart\small
+\begin{longtable}{L{1.0cm}L{5.4cm}L{7.3cm}}
+\hdrrow \hdr{ID} & \hdr{Objective} & \hdr{Success criterion (to be verified in Phase 14)}\\ \endhead
+O1 & Secure upload and lifecycle tracking & A valid invoice receives an ID and persistent status; invalid files are refused with a clear reason.\\
+O2 & Improve scan readability & Preprocessing reduces CER on the test set versus no preprocessing (reported, not assumed).\\
+O3 & Custom OCR for French and English & CER and WER reported on a held-out set alongside the Tesseract baseline.\\
+O4 & Extract key invoice fields & Per-field precision, recall and F1 reported for the field list in Section~\ref{sec:fields}.\\
+O5 & Confidence and review routing & Flagged records and their error rates reported; thresholds chosen on validation data only.\\
+O6 & Validate extracted data & Seeded error cases (wrong total, bad date, duplicate) are detected in tests.\\
+O7 & Review dashboard & A reviewer completes correct-and-approve tasks in a usability check.\\
+O8 & Persist data and audit trail & Every correction, approval and ERP attempt appears in the audit log.\\
+O9 & ERP integration & Mock/sandbox demonstrates success, failure and retry with zero duplicate records.\\
+O10 & Containerised delivery & A new machine runs the system from the documented setup in a clean environment.\\
+\hline
+\end{longtable}}
+
+\section{Provisional quantitative targets}
+\label{sec:targets}
+\begin{warnbox}[Planning values, not results]
+The numbers below only give the experiments a goal. They will be revised after the baseline measurement (Phase 7) and must never be quoted in the report as achieved results.
+\end{warnbox}
+{\tblstart\small
+\begin{longtable}{L{4.6cm}L{4.4cm}L{4.8cm}}
+\hdrrow \hdr{Metric} & \hdr{Provisional target} & \hdr{Revision point}\\ \endhead
+CER / WER (custom model) & Compete with the Tesseract baseline on the same test set & Absolute target set after Phase 7\\
+Field F1: invoice number, date, total & $\geq 0.85$ before human review & After Phase 9 first run\\
+Arithmetic-error detection & All seeded error cases detected & Phase 10\\
+Duplicate ERP submissions & 0 in retry tests & Phase 12\\
+Median time per single-page invoice & Reported (no fixed target) & After Phase 7\\
+Upload rejection of invalid files & 100\% of defined invalid test files & Phase 5\\
+\hline
+\end{longtable}}
+
+\chapter{Scope}
+\section{In scope (first prototype)}
+\begin{itemize}
+\item Supplier invoices as PDF, PNG or JPEG, French and English, printed or cleanly scanned.
+\item Preprocessing, OCR (custom and baseline), extraction, validation, confidence scoring.
+\item Human review with correction, approval, rejection and audit trail.
+\item ERP adapter with a mock or sandbox ERP; Odoo mapping documented.
+\item Flutter Web dashboard, FastAPI backend, MySQL, Docker.
+\end{itemize}
+
+\section{Out of scope}
+\begin{itemize}
+\item Handwritten invoices and very low-quality photographs.
+\item Other document types (purchase orders, receipts, forms) -- listed as future work.
+\item Fully automatic posting without human approval.
+\item Production ERP connection and any claim of legal or accounting compliance.
+\item Mobile application and offline mode.
+\end{itemize}
+
+\section{Supported document types: decision}
+{\tblstart\small
+\begin{longtable}{L{3.4cm}L{2.6cm}L{7.8cm}}
+\hdrrow \hdr{Document type} & \hdr{Prototype?} & \hdr{Reason}\\ \endhead
+Invoice & \textbf{Yes} & Clear field set, directly useful for ERP ingestion, arithmetic gives strong validation rules.\\
+Purchase order & Later & Similar fields; add after the invoice workflow works.\\
+Receipt & Later & Variable layouts and thermal-print quality make OCR harder.\\
+Administrative form & Later & Needs form-specific templates.\\
+\hline
+\end{longtable}}
+
+\chapter{Stakeholders and Users}
+\section{Stakeholder analysis}
+\begin{figure}[H]\centering
+\resizebox{0.62\textwidth}{!}{\input{figs/fig_stake}}
+\caption{Influence--interest grid (initial judgement; adjust with the supervisor).}\label{fig:stake}
+\end{figure}
+
+{\tblstart\small
+\begin{longtable}{L{3.2cm}L{5.4cm}L{5.2cm}}
+\hdrrow \hdr{Stakeholder} & \hdr{Needs} & \hdr{Involvement}\\ \endhead
+Academic supervisor & Rigour, honest evaluation, progress evidence. & Reviews documents and milestones.\\
+Jury / evaluators & Clear architecture, working demonstration, measured results. & Final defence.\\
+Reviewer / accountant & Fast, trustworthy correction of uncertain fields. & Main interactive user of the review screen.\\
+Document operator & Simple upload and status tracking. & Daily user.\\
+Administrator & Control of users, rules and thresholds. & Configuration and oversight.\\
+ERP owner / IT & Clean, safe, non-duplicating integration. & Provides interface details (open decision).\\
+\hline
+\end{longtable}}
+
+\section{User roles}
+Four roles are enforced by the backend: \textbf{Administrator}, \textbf{Operator}, \textbf{Reviewer} and \textbf{Integration service account}. A supervisor or auditor receives read-only access to logs and metrics.
+
+\section{User stories}
+{\tblstart\small
+\begin{longtable}{L{1.2cm}L{10.4cm}L{2.0cm}}
+\hdrrow \hdr{ID} & \hdr{Story} & \hdr{Req.}\\ \endhead
+US-01 & As an operator, I upload an invoice and immediately get an ID and status, so that I know it was received. & FR-03, 05, 06\\
+US-02 & As an operator, I see why a bad file was refused, so that I can send a correct one. & FR-04\\
+US-03 & As a reviewer, I see the source page next to the extracted fields with doubtful values highlighted, so that I check only what matters. & FR-11, 22\\
+US-04 & As a reviewer, I correct a value and give a reason, so that the change is traceable. & FR-12, 13\\
+US-05 & As a reviewer, I approve or reject a record, so that only checked data reaches the ERP. & FR-12, 14\\
+US-06 & As an administrator, I adjust review thresholds and validation rules without changing code. & FR-17\\
+US-07 & As an accountant, I am warned about a probable duplicate invoice before it is posted. & FR-10, 11\\
+US-08 & As an auditor, I see who changed what and when. & FR-13\\
+US-09 & As an operator, I resubmit a failed document for processing. & FR-21\\
+US-10 & As the ERP owner, I need a failed submission to be retryable without creating a second record. & FR-15\\
+\hline
+\end{longtable}}
+
+\chapter{Functional Requirements}
+\section{Requirement list with acceptance criteria}
+Priorities follow MoSCoW: \must{} (needed for the prototype), \should{} (important, can slip), \could{} (nice to have). Each requirement has an acceptance criterion that becomes a test in Phase 14.
+
+{\tblstart\footnotesize
+\begin{longtable}{L{1.2cm}L{5.6cm}L{1.3cm}L{5.4cm}}
+\hdrrow \hdr{ID} & \hdr{Requirement} & \hdr{Prio.} & \hdr{Acceptance criterion}\\ \endhead
+FR-01 & A permitted user can sign in and sign out. & \must & Valid credentials give access; invalid ones are refused; logout invalidates the session.\\
+FR-02 & Role-based access to admin, operational and review functions. & \must & Each role can call only its endpoints; others return 403.\\
+FR-03 & Upload PDF, PNG or JPEG within configured limits. & \must & Valid file returns a document ID.\\
+FR-04 & Check file type, size and basic integrity. & \must & Oversized, wrong-type and corrupt files are refused (413/415/400).\\
+FR-05 & Store the original privately with a unique ID and SHA-256. & \must & File is not reachable without authorisation; hash stored.\\
+FR-06 & Create a processing job with status and timestamps. & \must & Status and times visible after upload.\\
+FR-07 & Normalise pages and enhance images. & \must & Pages are rendered and preprocessed; intermediates retrievable in debug mode.\\
+FR-08 & OCR returns text and confidence where supported. & \must & Output contains text per line with a confidence value.\\
+FR-09 & Map recognised content to configured invoice fields. & \must & Field list in Section~\ref{sec:fields} produced for a test invoice.\\
+FR-10 & Validate required fields, formats, arithmetic and duplicates. & \must & Seeded invalid invoices raise the expected findings.\\
+FR-11 & Flag low-confidence or invalid records for review. & \must & Flagged records enter the review queue.\\
+FR-12 & Reviewer can correct, give a reason, approve or reject. & \must & Decision and reason stored; state changes accordingly.\\
+FR-13 & Audit trail of corrections, decisions and ERP attempts. & \must & Each action yields an audit event with actor and time.\\
+FR-14 & Only approved records go to the ERP adapter. & \must & Submitting an unapproved record returns 409.\\
+FR-15 & Record ERP status, reference and errors; no duplicates. & \must & Repeating a successful submission creates no second ERP record.\\
+FR-16 & Search and filter documents. & \should & Filters by status, date, type and ID return correct sets.\\
+FR-17 & Admin configures rules and thresholds. & \should & Changed threshold changes review routing without redeploying.\\
+FR-18 & Health endpoints and basic metrics. & \should & \texttt{/api/v1/health} answers; database readiness reported.\\
+FR-19 & Dashboard shows counts, failure and review queues. & \should & Counts match database state.\\
+FR-20 & Export approved data (JSON/CSV). & \could & Export file matches approved records.\\
+FR-21 & Resubmit failed or rejected document for reprocessing. & \should & A new run is created; history of earlier runs is kept.\\
+FR-22 & Review screen shows source beside fields with highlighted evidence. & \should & Selecting a field highlights its region on the page.\\
+\hline
+\end{longtable}}
+
+\section{Invoice field specification}\label{sec:fields}
+The prototype extracts the fields below. The numbers match the callouts in Figure~\ref{fig:invoice}. ERP mappings are candidates for a vendor bill in Odoo and \textbf{must be verified against the chosen Odoo version} before implementation.
+
+\begin{figure}[H]\centering
+\resizebox{0.95\textwidth}{!}{\input{figs/fig_invoice}}
+\caption{Anatomy of an invoice (synthetic example) with the fields to extract.}\label{fig:invoice}
+\end{figure}
+
+{\tblstart\footnotesize
+\begin{longtable}{L{0.7cm}L{2.7cm}L{1.4cm}L{1.4cm}L{4.0cm}L{2.6cm}}
+\hdrrow \hdr{No.} & \hdr{Field} & \hdr{Type} & \hdr{Required} & \hdr{Validation} & \hdr{Candidate ERP field}\\ \endhead
+1 & Supplier name & text & Yes & Non-empty; matched to known suppliers if available. & partner\\
+2 & Supplier tax ID & text & No & Pattern check where format is known. & partner VAT\\
+3 & Invoice number & text & Yes & Non-empty; used in duplicate check. & vendor reference\\
+4 & Invoice date & date & Yes & Parses; plausible range. & invoice date\\
+5 & Due date & date & No & Not before invoice date. & due date\\
+6 & PO reference & text & No & Format check if configured. & origin / purchase order\\
+7 & Line items & table & No & Quantity $\times$ unit price $\approx$ amount. & invoice lines\\
+8 & Subtotal & decimal & Yes & Parses with locale rules. & untaxed amount\\
+9 & Tax amount & decimal & Yes & Parses; consistent with rate if known. & tax amount\\
+10 & Total amount & decimal & Yes & Subtotal + tax $\approx$ total within tolerance. & total amount\\
+11 & Currency & code & Yes & Known currency code or symbol; consistent. & currency\\
+\hline
+\end{longtable}}
+
+\chapter{Non-Functional Requirements}
+{\tblstart\small
+\begin{longtable}{L{1.6cm}L{2.4cm}L{5.0cm}L{4.6cm}}
+\hdrrow \hdr{ID} & \hdr{Category} & \hdr{Requirement} & \hdr{Verification}\\ \endhead
+NFR-01 & Security & Authenticate users, authorise every protected action, keep secrets out of code, restrict stored files. & Access-control and file-access tests.\\
+NFR-02 & Privacy & Collect only necessary data; synthetic or authorised test documents; define retention. & Data-handling checklist.\\
+NFR-03 & Reliability & A failed step produces a visible, recoverable state; no silent job loss. & Failure-injection tests.\\
+NFR-04 & Traceability & Stable identifiers and timestamps for documents and runs. & Inspection of records.\\
+NFR-05 & Maintainability & Separate API, domain logic, OCR, validation, storage and ERP adapter. & Code structure review.\\
+NFR-06 & Portability & Setup reproducible from documentation and Docker images. & Clean-machine setup test.\\
+NFR-07 & Performance & Measure per-stage and end-to-end time; set targets after a baseline. & Timed runs on the test set.\\
+NFR-08 & Usability & Reviewers find doubtful fields and understand errors without logs. & Task-based usability check.\\
+NFR-09 & Scalability & OCR separable from interactive requests; scalable later. & Architecture review, worker test.\\
+NFR-10 & Observability & Structured logs and health without sensitive content. & Log inspection.\\
+\hline
+\end{longtable}}
+
+\section{Business rules}
+\begin{enumerate}
+\item[BR-1] No ERP submission before validation and approval by an authorised reviewer.
+\item[BR-2] Low-confidence fields are always visible to the reviewer; confidence is not proof.
+\item[BR-3] Likely duplicates are flagged, never deleted automatically.
+\item[BR-4] ERP requests carry an idempotency key.
+\item[BR-5] Corrections keep the original value, new value, actor, time and reason.
+\item[BR-6] Failed integration attempts are retryable without duplicate records.
+\end{enumerate}
+
+\chapter{Use Cases}
+\section{Use-case diagram}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_usecase}}
+\caption{Use cases and actors (all require sign-in).}\label{fig:uc1}
+\end{figure}
+
+\section{Detailed use-case specifications}
+\subsection*{UC-01 Upload document}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{10.8cm}}
+Actor & Document operator\\
+Preconditions & Operator is signed in and has the Operator role.\\
+Main flow & 1. Operator selects a file. 2. System checks type, size and integrity. 3. System stores the original and its SHA-256. 4. System creates a document and a queued job. 5. System returns the document ID and status.\\
+Alternative flows & 2a. File invalid: system refuses with a reason (400/413/415). 3a. Same hash already stored: system accepts but flags a probable duplicate.\\
+Postconditions & Document exists in state QUEUED; an audit event \emph{upload} is recorded.\\
+Requirements & FR-03, FR-04, FR-05, FR-06, FR-13\\
+\hline
+\end{longtable}}
+
+\subsection*{UC-02 Review, correct and approve}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{10.8cm}}
+Actor & Reviewer\\
+Preconditions & Document is in NEEDS\_REVIEW.\\
+Main flow & 1. Reviewer opens the record. 2. System shows the source page beside extracted fields, doubtful ones highlighted. 3. Reviewer corrects fields and gives reasons. 4. Reviewer approves. 5. System stores corrections and decision and sets APPROVED.\\
+Alternative flows & 4a. Reviewer rejects with a reason: state REJECTED. 3a. A correction breaks a validation rule: system shows the finding and blocks approval until resolved or explicitly overridden with a reason (override policy to be decided).\\
+Postconditions & Audit events for each correction and the decision.\\
+Requirements & FR-11, FR-12, FR-13, FR-22\\
+\hline
+\end{longtable}}
+
+\subsection*{UC-03 Submit approved record to ERP}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{10.8cm}}
+Actor & Integration service (triggered by an authorised user or automatically after approval)\\
+Preconditions & Document is APPROVED; ERP adapter configured.\\
+Main flow & 1. System builds the ERP payload and an idempotency key. 2. System validates the payload. 3. System calls the ERP. 4. On success it stores the external reference and sets ERP\_SENT.\\
+Alternative flows & 2a. Payload invalid: submission blocked, finding shown. 3a. ERP error or timeout: attempt recorded, state ERP\_FAILED; retry reuses the same key.\\
+Postconditions & An ERPAttempt record exists for every try; no duplicate ERP record.\\
+Requirements & FR-14, FR-15, FR-13\\
+\hline
+\end{longtable}}
+
+\subsection*{UC-04 Manage users and thresholds}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{10.8cm}}
+Actor & Administrator\\
+Main flow & Create or deactivate users, assign roles, adjust validation rules and review thresholds; every change is audited.\\
+Requirements & FR-02, FR-17, FR-13\\
+\hline
+\end{longtable}}
+
+\chapter{Data Requirements}
+\section{Data the system stores}
+Users and roles; documents (metadata, hash, storage key, status); processing runs; extracted fields with confidence and evidence; reviews; ERP attempts; audit events. Original files are stored outside the database in protected storage.
+
+\section{Dataset requirements for OCR (Phase 8 preparation)}
+\begin{itemize}
+\item \textbf{Sources:} synthetic invoices generated from templates (with varied fonts, layouts and noise), invoices created by the student, and authorised real samples with personal data removed. Do not use real customer data without permission.
+\item \textbf{Languages:} French and English, including accented characters, currency symbols and typical French number formats.
+\item \textbf{Labels:} verified transcriptions of text lines and field-level ground truth for the test set.
+\item \textbf{Split:} training, validation and test sets separated by source document or template, so the test set is truly unseen.
+\item \textbf{Documentation:} dataset version, size, language mix, labelling method and known limitations.
+\item \textbf{Size:} not fixed in advance; decide after the baseline shows the error level. [Decision needed with supervisor]
+\end{itemize}
+
+\section{Ethics and data handling}
+Documents may contain personal and financial information. Use synthetic or anonymised data for development, restrict access, define retention, and do not send documents to external OCR services without understanding the privacy implications.
+
+\chapter{Constraints, Assumptions and Dependencies}
+\section{Constraints}
+\begin{itemize}
+\item One student developer and a fixed academic calendar.
+\item Limited training hardware; a GPU may need a cloud notebook.
+\item The ERP interface may be unavailable; a mock ERP is the fallback.
+\item The jury expects measured results and a working demonstration.
+\end{itemize}
+\section{Assumptions}
+\begin{itemize}
+\item Python 3.13 and MySQL 8 can be installed on the development machine.
+\item Enough invoices (real, synthetic or both) can be assembled for training and testing.
+\item The supervisor approves the invoice-only scope.
+\end{itemize}
+\section{Dependencies}
+Supervisor approval of scope; access to an ERP sandbox or Odoo instance (Phase 12); dataset availability (Phase 8); GPU or cloud access (Phase 8).
+
+\chapter{Risk Analysis}
+\begin{figure}[H]\centering
+\resizebox{0.72\textwidth}{!}{\input{figs/fig_risk}}
+\caption{Initial risk matrix. Identifiers refer to the table below.}\label{fig:risk1}
+\end{figure}
+{\tblstart\small
+\begin{longtable}{L{0.9cm}L{3.4cm}L{2.0cm}L{2.0cm}L{5.0cm}}
+\hdrrow \hdr{ID} & \hdr{Risk} & \hdr{Likelihood} & \hdr{Impact} & \hdr{Mitigation}\\ \endhead
+R1 & Not enough labelled data & High & High & Synthetic data, templates, invoice-only scope.\\
+R2 & Custom OCR under-performs & Medium & High & Baseline comparison, error analysis, replaceable OCR interface.\\
+R3 & Package incompatibility & Medium & Low & Python 3.13, pinned versions.\\
+R4 & ERP API unknown / no Odoo access & Medium & High & Mock ERP and adapter interface; ask for access early.\\
+R5 & Sensitive data exposure & Low & High & Synthetic data, private storage, minimal logging.\\
+R6 & Duplicate ERP records & Low & Medium & Idempotency keys and retry tests.\\
+R7 & Scope creep & High & Medium & Written scope; extras go to future work.\\
+R8 & Microservice overhead & Medium & Medium & Modular monolith first.\\
+R9 & OCR job crashes & Medium & Low & Persisted status, bounded retries.\\
+R10 & Training hardware or time lacking & Medium & High & Small model, cloud GPU, smaller dataset.\\
+\hline
+\end{longtable}}
+
+\chapter{Project Plan}
+\section{Phases and stages}
+The project has 18 phases in four stages: A Foundation (1--5), B Intelligence (6--10), C Application (11--13), D Delivery (14--18). The rule is to complete one end-to-end workflow before adding architectural complexity.
+
+\section{Proposed timeline}
+\begin{warnbox}[Assumption]
+The 30-week timeline is a \emph{proposal}. The real start date, deadline and supervisor checkpoints are not known and must replace these weeks.
+\end{warnbox}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_gantt}}
+\caption{Proposed Gantt chart (colours: teal = foundation, amber = intelligence, violet = application, red = delivery).}\label{fig:gantt}
+\end{figure}
+
+\section{Milestones}
+{\tblstart\small
+\begin{longtable}{L{1.2cm}L{6.2cm}L{3.0cm}L{3.2cm}}
+\hdrrow \hdr{ID} & \hdr{Milestone} & \hdr{Proposed week} & \hdr{Evidence}\\ \endhead
+M1 & Requirements approved by supervisor & 2 & Signed Phase 1 document\\
+M2 & Backend + database + upload working & 9 & Passing tests, demo\\
+M3 & Baseline OCR results & 12 & CER/WER table\\
+M4 & Custom OCR trained and compared & 19 & Evaluation report\\
+M5 & End-to-end workflow with mock ERP & 23 & Recorded demo run\\
+M6 & Evaluation and security complete & 26 & Test reports\\
+M7 & Deployed system and final report & 30 & Report, slides, demo\\
+\hline
+\end{longtable}}
+
+\section{Definition of done}
+A phase is done when: its deliverable exists, automated tests for it pass, documentation is updated, and the result is demonstrable to the supervisor.
+
+\chapter{Traceability Matrix}
+Each objective is linked to requirements and to the test that will prove it.
+{\tblstart\small
+\begin{longtable}{L{1.0cm}L{5.0cm}L{4.4cm}L{3.2cm}}
+\hdrrow \hdr{Obj.} & \hdr{Requirements} & \hdr{Verified by} & \hdr{Phase}\\ \endhead
+O1 & FR-03, 04, 05, 06 & API and upload tests & 5, 14\\
+O2 & FR-07 & Preprocessing A/B comparison & 6\\
+O3 & FR-08, NFR-07 & CER/WER experiment & 7, 8\\
+O4 & FR-09 & Field-level F1 evaluation & 9\\
+O5 & FR-11, FR-17 & Review-routing evaluation & 10\\
+O6 & FR-10 & Seeded-error unit tests & 10\\
+O7 & FR-12, 16, 19, 22, NFR-08 & Usability check, UI tests & 11, 13\\
+O8 & FR-13, NFR-04 & Audit-log tests & 4, 11\\
+O9 & FR-14, 15, 20, 21 & Mock-ERP integration tests & 12\\
+O10 & NFR-06, NFR-09, NFR-10, FR-18 & Clean-machine setup, health checks & 16, 17\\
+\hline
+\end{longtable}}
+
+\chapter{Open Decisions and Sign-off}\label{sec:decisions}
+\section{Decisions needed to close Phase 1}
+{\tblstart\small
+\begin{longtable}{L{0.9cm}L{6.0cm}L{4.4cm}L{2.5cm}}
+\hdrrow \hdr{No.} & \hdr{Decision} & \hdr{Current proposal} & \hdr{Owner}\\ \endhead
+D1 & Final project name & \projname{} (working name) & Student\\
+D2 & Supervisor name and checkpoints & To be completed & Student / supervisor\\
+D3 & Prototype document type & Invoices only & Supervisor\\
+D4 & ERP target & Mock ERP first, Odoo later & Student / supervisor\\
+D5 & Odoo version and access & Unknown & Student\\
+D6 & Dataset source and size & Synthetic + authorised samples; size after baseline & Student / supervisor\\
+D7 & Training hardware & Local GPU or cloud notebook & Student\\
+D8 & Real calendar and deadlines & Replace proposed 30 weeks & Student\\
+D9 & Policy when a reviewer overrides a validation error & Allow with mandatory reason & Supervisor\\
+\hline
+\end{longtable}}
+
+\section{Phase 1 completion checklist}
+\begin{itemize}
+\item[\fbox{\rule{0pt}{6pt}\rule{6pt}{0pt}}] Problem, objectives and scope reviewed with the supervisor.
+\item[\fbox{\rule{0pt}{6pt}\rule{6pt}{0pt}}] Decisions D1--D9 answered.
+\item[\fbox{\rule{0pt}{6pt}\rule{6pt}{0pt}}] Functional and non-functional requirements accepted.
+\item[\fbox{\rule{0pt}{6pt}\rule{6pt}{0pt}}] Provisional targets agreed as planning values.
+\item[\fbox{\rule{0pt}{6pt}\rule{6pt}{0pt}}] Timeline replaced by the real academic calendar.
+\item[\fbox{\rule{0pt}{6pt}\rule{6pt}{0pt}}] Cover page completed.
+\end{itemize}
+
+\section{Approval}
+\tblstart\small
+\begin{tabular}{L{4.2cm}L{4.5cm}L{3.2cm}}
+\hline
+Student & \studentname & Date:\\[0.6cm]
+\hline
+Supervisor & \supervisorname & Date:\\[0.6cm]
+\hline
+\end{tabular}

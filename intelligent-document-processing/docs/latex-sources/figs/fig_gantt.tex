@@ -1,0 +1,27 @@
+\begin{ganttchart}[x unit=0.37cm,y unit title=0.5cm,y unit chart=0.46cm,
+  hgrid,hgrid style/.style={dotted,slate!40},vgrid={*{4}{draw=none},dotted},vgrid style/.style={slate!40},
+  title label font=\sffamily\tiny,bar label font=\sffamily\scriptsize,bar height=0.6,
+  bar/.append style={draw=none},
+  canvas/.append style={draw=slate!40},
+  bar label node/.append style={anchor=east,text width=4.4cm,align=right,font=\sffamily\scriptsize}]{1}{30}
+\gantttitle{Proposed project weeks (assumption -- adjust to your academic calendar)}{30}\\
+\gantttitlelist{1,...,30}{1}\\
+\ganttbar[bar/.append style={fill=teal}]{P1 Requirements and planning}{1}{2}\\
+\ganttbar[bar/.append style={fill=teal}]{P2 Design and architecture}{2}{4}\\
+\ganttbar[bar/.append style={fill=teal}]{P3 Environment setup}{3}{4}\\
+\ganttbar[bar/.append style={fill=teal}]{P4 Database and backend}{4}{7}\\
+\ganttbar[bar/.append style={fill=teal}]{P5 Upload and storage}{7}{9}\\
+\ganttbar[bar/.append style={fill=amber}]{P6 Image preprocessing}{9}{11}\\
+\ganttbar[bar/.append style={fill=amber}]{P7 Baseline OCR}{10}{12}\\
+\ganttbar[bar/.append style={fill=amber}]{P8 Custom OCR model}{11}{19}\\
+\ganttbar[bar/.append style={fill=amber}]{P9 Information extraction}{13}{16}\\
+\ganttbar[bar/.append style={fill=amber}]{P10 Validation + confidence}{16}{18}\\
+\ganttbar[bar/.append style={fill=violet}]{P11 Human review}{18}{21}\\
+\ganttbar[bar/.append style={fill=violet}]{P12 ERP integration}{20}{23}\\
+\ganttbar[bar/.append style={fill=violet}]{P13 Flutter Web dashboard}{14}{24}\\
+\ganttbar[bar/.append style={fill=coral}]{P14 Testing and evaluation}{22}{26}\\
+\ganttbar[bar/.append style={fill=coral}]{P15 Security + reliability}{24}{26}\\
+\ganttbar[bar/.append style={fill=coral}]{P16 Docker + deployment}{25}{27}\\
+\ganttbar[bar/.append style={fill=coral}]{P17 Services + scaling (optional)}{27}{29}\\
+\ganttbar[bar/.append style={fill=coral}]{P18 Report and defence}{24}{30}
+\end{ganttchart}

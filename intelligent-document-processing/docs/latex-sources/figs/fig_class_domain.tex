@@ -1,0 +1,34 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[uclass] (user) at (0,0) {\cname{User}\nodepart{two}
+ +user\_id : UUID\\ +email : str\\ +password\_hash : str\\ +role : Role\\ +is\_active : bool
+ \nodepart{three}+authenticate()\\ +has\_permission(p)};
+\node[uclass] (run) at (5.8,0) {\cname{ProcessingRun}\nodepart{two}
+ +run\_id : UUID\\ +model\_version : str\\ +preproc\_config : JSON\\ +started\_at, ended\_at\\ +error\_category : str
+ \nodepart{three}+start()\\ +finish(status)};
+\node[uclass] (fld) at (11.6,0) {\cname{ExtractedField}\nodepart{two}
+ +field\_id : UUID\\ +name : str\\ +raw\_value, value : str\\ +confidence : float\\ +page, bbox : int[ ]\\ +validation : PASS|REVIEW|FAIL
+ \nodepart{three}+correct(v, reason)};
+\node[uclass] (doc) at (5.8,-5.0) {\cname{Document}\nodepart{two}
+ +document\_id : UUID\\ +storage\_key : str\\ +sha256 : str\\ +mime\_type : str\\ +size\_bytes : int\\ +status : DocumentStatus\\ +created\_at : datetime
+ \nodepart{three}+transition(to)\\ +is\_duplicate\_of(d)};
+\node[uclass] (rev) at (0,-5.0) {\cname{Review}\nodepart{two}
+ +review\_id : UUID\\ +decision : Decision\\ +notes : str\\ +decided\_at : datetime
+ \nodepart{three}+approve()\\ +reject(reason)};
+\node[uclass] (erp) at (11.6,-5.0) {\cname{ERPAttempt}\nodepart{two}
+ +attempt\_id : UUID\\ +idempotency\_key : str\\ +destination : str\\ +status : str\\ +external\_ref : str\\ +error : str
+ \nodepart{three}+submit(payload)\\ +retry()};
+\node[uclass] (aud) at (5.8,-10.4) {\cname{AuditEvent}\nodepart{two}
+ +event\_id : UUID\\ +actor\_id : UUID\\ +document\_id : UUID\\ +action : str\\ +before, after : JSON\\ +at : datetime
+ \nodepart{three}+record(action, ctx)};
+\node[uenum] (enum) at (11.6,-10.4) {\cname{\stereo{enum} DocumentStatus}\nodepart{two}
+ UPLOADED, QUEUED,\\ PROCESSING, NEEDS\_REVIEW,\\ APPROVED, REJECTED,\\ ERP\_SENT, ERP\_FAILED, FAILED};
+% relations
+\draw[color=navy,line width=0.7pt] (user.south) -- node[lbl,pos=0.15,right]{1} node[lbl,pos=0.5,right]{reviews} node[lbl,pos=0.85,right]{0..*} (user.south |- rev.north);
+\draw[color=navy,line width=0.7pt] (user.south east) -- node[lbl,pos=0.12,above right]{1} node[lbl,pos=0.5,sloped,above]{uploads} node[lbl,pos=0.88,above]{0..*} (doc.north west);
+\draw[color=navy,line width=0.7pt] (doc.north) -- node[lbl,pos=0.1,left]{1} node[lbl,pos=0.5,left]{processed by} node[lbl,pos=0.9,left]{1..*} (run.south);
+\draw[color=navy,line width=0.7pt,-{Diamond[open,length=3mm]}] (fld.west) -- node[lbl,pos=0.12,above]{0..*} node[lbl,pos=0.88,above]{1} (run.east);
+\draw[color=navy,line width=0.7pt] (rev.east) -- node[lbl,pos=0.12,above]{0..*} node[lbl,pos=0.88,above]{1} (doc.west);
+\draw[color=navy,line width=0.7pt] (doc.east) -- node[lbl,pos=0.12,above]{1} node[lbl,pos=0.88,above]{0..*} (erp.west);
+\draw[color=navy,line width=0.7pt] (doc.south) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.5,left]{logged in} node[lbl,pos=0.85,left]{0..*} (aud.north);
+\draw[color=slate,dashed,line width=0.7pt,-{Stealth[open]}] (doc.south east) -- node[lbl,sloped,above]{uses} (enum.north west);
+\end{tikzpicture}

@@ -1,6 +1,12 @@
-# Intelligent Document Processing (IDP) — Phase 1: Backend foundation
+# DocuMind AI (Intelligent Document Processing) — Phase 1 project folder
 
-FastAPI backend with settings, health checks, tests, Dockerfile and a Docker Compose stack with MySQL 8.
+Contents of this Phase 1 folder:
+
+- `backend/` : FastAPI backend foundation (settings, health checks, 4 passing tests, Dockerfile).
+- `docker-compose.yml` : backend + MySQL 8 (written, not yet run on your machine).
+- `docs/` : Phase 1 requirements specification and the full design document (PDF + LaTeX sources).
+
+**Status:** Phase 1 documents are drafted and wait for supervisor decisions (see the last chapter of the Phase 1 PDF). The backend covers only the start of Phases 3--4. No OCR model has been trained.
 
 ## Structure
 

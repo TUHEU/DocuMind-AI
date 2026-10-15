@@ -1,0 +1,13 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[boxN,text width=2.2cm,minimum height=2.0cm] (in) at (1.3,0) {Text-line image\\[2pt]\scriptsize $1\times H\times W$\\ $H=32$ (fixed)};
+\node[boxT,text width=2.6cm,minimum height=2.0cm] (cnn) at (4.7,0) {Convolutional\\ feature extractor\\[2pt]\scriptsize conv + BN + ReLU\\ + max-pool blocks};
+\node[boxA,text width=2.4cm,minimum height=2.0cm] (seq) at (8.2,0) {Feature sequence\\[2pt]\scriptsize $T\times C$\\ (one vector per\\ horizontal step)};
+\node[boxV,text width=2.4cm,minimum height=2.0cm] (rnn) at (11.5,0) {Bidirectional\\ LSTM $\times 2$\\[2pt]\scriptsize context in both\\ directions};
+\node[boxC,text width=2.3cm,minimum height=2.0cm] (out) at (14.7,0) {Linear + softmax\\[2pt]\scriptsize $T\times(|\mathcal{A}|+1)$\\ incl. CTC blank};
+\foreach \a/\b in {in/cnn,cnn/seq,seq/rnn,rnn/out}{\draw[arr] (\a) -- (\b);}
+\node[boxN,text width=6.6cm,minimum height=1.0cm] (ctc) at (11.0,-3.0) {CTC training loss $\mathcal{L}=-\log P(y\mid x)$ \ $\vert$ \ greedy / beam decoding at inference};
+\draw[arr] (out.south) -- ++(0,-0.4) -| (ctc.north);
+\node[boxA,text width=4.4cm,minimum height=1.0cm] (txt) at (3.2,-3.0) {Recognised text: \emph{``Facture N\textdegree{} 2026-017''}};
+\draw[arr] (ctc.west) -- (txt.east);
+\node[font=\sffamily\scriptsize,text=slate,text width=15cm,align=left,anchor=north west] at (0.2,-4.2) {$\mathcal{A}$: alphabet of French and English letters (including accented letters), digits, punctuation and business symbols. Image height and layer sizes are design choices to be tuned experimentally.};
+\end{tikzpicture}

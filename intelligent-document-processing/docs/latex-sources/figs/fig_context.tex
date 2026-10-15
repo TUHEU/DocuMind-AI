@@ -1,0 +1,16 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[circle,draw=navy,fill=navy,text=white,font=\sffamily\bfseries\small,align=center,minimum size=3.6cm] (sys) at (8,4) {\projname\\[-1pt]\scriptsize IDP + ERP\\[-2pt]\scriptsize ingestion system};
+\node[boxC,minimum width=3cm,text width=2.8cm] (src) at (1.9,7.0) {\textbf{Document source}\\\scriptsize supplier, scanner, email attachment};
+\node[box,minimum width=3cm,text width=2.8cm] (op) at (1.9,1.0) {\textbf{Document operator}\\\scriptsize uploads, tracks};
+\node[boxA,minimum width=3cm,text width=2.8cm] (rv) at (8,8.6) {\textbf{Reviewer / accountant}\\\scriptsize corrects, approves};
+\node[boxV,minimum width=3cm,text width=2.8cm] (ad) at (8,-0.6) {\textbf{Administrator}\\\scriptsize users, rules, thresholds};
+\node[boxC,minimum width=3cm,text width=2.8cm,fill=blush] (erp) at (14.1,4.0) {\textbf{ERP system}\\\scriptsize Odoo or mock API};
+\draw[arr] (src) -- node[lbl,sloped,above]{paper / PDF / image} (sys.north west);
+\draw[arr] (op.north east) -- node[lbl,sloped,above]{files, search} (sys.south west);
+\draw[arr] (sys.south west) -- (op.north east);
+\draw[arr] (sys.north) -- node[lbl,right]{fields to check} (rv.south);
+\draw[arr] ([xshift=-6mm]rv.south) -- node[lbl,left]{corrections, decision} ([xshift=-6mm]sys.north |- sys.north);
+\draw[arr] (ad.north) -- node[lbl,right]{configuration} (sys.south);
+\draw[arr] (sys.east) -- node[lbl,above]{approved record} (erp.west);
+\draw[arr] (erp.south west) -- node[lbl,sloped,below]{reference / error} (sys.south east);
+\end{tikzpicture}

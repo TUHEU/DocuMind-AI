@@ -1,0 +1,129 @@
+\chapter{System Architecture}
+\section{Architecture Overview}
+The project is developed incrementally. The first milestone is a working API connected to MySQL. Document upload, preprocessing, OCR and review follow. Docker Compose is introduced once individual modules work, services are separated where there is a clear operational benefit, and Kubernetes is a later deployment target, not a prerequisite.
+
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_arch}}
+\caption{Layered logical architecture. Solid arrows are requests; dashed arrows are data access. The job queue is introduced only in a later stage.}\label{fig:arch}
+\end{figure}
+
+\section{Logical Modules}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{6.2cm}L{4.7cm}}
+\hdrrow \hdr{Module} & \hdr{Responsibilities} & \hdr{Input $\rightarrow$ output}\\ \endhead
+Flutter Web UI & Sign-in, upload, document list, review workspace, status dashboard. & User actions $\rightarrow$ API calls and views.\\
+API layer & Request validation, routing, authentication, consistent errors, API versioning. & HTTP/JSON.\\
+Authentication & User identity, roles, token lifecycle, account status. & Credentials $\rightarrow$ principal.\\
+Document service & Upload validation, metadata, storage reference, job lifecycle. & File $\rightarrow$ document ID and state.\\
+Preprocessing / OCR & PDF rendering, image enhancement, line segmentation, recognition. & Page $\rightarrow$ text, regions, confidence.\\
+Extraction & Turn OCR output into typed invoice fields and keep source evidence. & Text + layout $\rightarrow$ candidate fields.\\
+Validation / review & Business rules, confidence policy, corrections, approvals. & Candidates $\rightarrow$ approved record.\\
+ERP adapter & Map approved records, authenticate, submit, reconcile status. & Record $\rightarrow$ ERP response.\\
+MySQL & Users, metadata, fields, workflow states, attempts, audit records. & Transactional data.\\
+Protected storage & Original uploads and derived page images outside the web root. & Files.\\
+\hline
+\end{longtable}}
+
+\section{Why Start with a Modular Monolith?}
+Microservices add network calls, inter-service authentication, distributed failure modes and deployment effort. For a student project the sound path is to build clearly separated modules inside one backend, test their interfaces, and extract services only where needed (typically the OCR worker first, because it is slow and resource-hungry). This keeps the service-oriented design while the first milestone stays achievable. Chapter~\ref{ch:deploy} shows the Docker Compose and Kubernetes stages.
+
+\section{Repository Structure}
+\begin{lstlisting}[language=bash]
+intelligent-document-processing/
+  backend/
+    app/
+      main.py
+      api/              # routers (health, auth, documents, review, erp)
+      core/             # settings, security, logging
+      database/         # engine, sessions
+      models/           # SQLAlchemy models
+      schemas/          # Pydantic schemas
+      services/         # documents, preprocessing, ocr, extraction,
+                        # validation, integration
+      workers/          # background jobs (later)
+    alembic/            # migrations
+    tests/
+    Dockerfile  requirements.txt
+  frontend/flutter_app/
+  ml/                   # datasets (not committed), training, evaluation
+  infrastructure/       # docker, compose, kubernetes
+  docs/
+  docker-compose.yml  .env.example  README.md
+\end{lstlisting}
+
+\chapter{UML Modelling}\label{ch:uml}
+This chapter presents the system from several standard UML viewpoints. Each diagram answers a different question: who uses the system (use cases), what it stores (class and ER), how a document changes state, how work flows, and how components talk to each other (sequence).
+
+\section{Use-Case Diagram}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_usecase}}
+\caption{Use cases and actors. Every use case requires the user to be signed in (FR-01). \stereo{include} marks behaviour that is always executed as part of another use case.}\label{fig:usecase}
+\end{figure}
+
+\subsection*{Use-case summary}
+{\tblstart\small
+\begin{longtable}{L{4.2cm}L{3.1cm}L{6.5cm}}
+\hdrrow \hdr{Use case} & \hdr{Actor} & \hdr{Outcome}\\ \endhead
+Upload document & Operator & A valid file is stored, a document ID is returned, a job is queued.\\
+Track status and search & Operator, Reviewer & Current state and history of each permitted document.\\
+Review and correct fields & Reviewer & Corrected values saved with reasons and audit events.\\
+Approve or reject record & Reviewer & Record becomes APPROVED or REJECTED.\\
+Submit approved record to ERP & ERP system & ERP reference stored; failures recorded and retryable.\\
+View audit trail and metrics & Administrator, Reviewer & Traceable history and processing statistics.\\
+Configure rules and thresholds & Administrator & Validation rules and review thresholds updated.\\
+Manage users and roles & Administrator & Accounts created, deactivated, roles assigned.\\
+\hline
+\end{longtable}}
+
+\section{Class Diagrams}
+\subsection{Domain model}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_class_domain}}
+\caption{Domain class diagram. A hollow diamond marks composition-like ownership (a processing run owns its extracted fields); plain lines are associations with multiplicities.}\label{fig:classdomain}
+\end{figure}
+
+\subsection{Service layer and extension points}
+Two interfaces isolate the parts most likely to change. \texttt{OcrEngine} lets the pipeline use Tesseract (baseline) or the custom CRNN without modification, which is exactly what the comparison experiment needs. \texttt{ErpAdapter} keeps ERP-specific code (mock now, Odoo later) out of the document-processing logic (research question~5).
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_class_services}}
+\caption{Strategy pattern for OCR engines and ERP adapters.}\label{fig:classservices}
+\end{figure}
+
+\section{State Machine of a Document}
+A document moves through explicit states. The implementation must reject invalid transitions (for example, an unreviewed document must never jump to \texttt{ERP\_SENT}).
+\begin{figure}[H]\centering
+\resizebox{0.95\textwidth}{!}{\input{figs/fig_state}}
+\caption{Document lifecycle. Initial state is the filled dot; double circles are final states.}\label{fig:state}
+\end{figure}
+
+{\tblstart\small
+\begin{longtable}{L{3.4cm}L{3.4cm}L{7.0cm}}
+\hdrrow \hdr{From} & \hdr{To} & \hdr{Trigger / guard}\\ \endhead
+UPLOADED & QUEUED & Upload accepted and stored.\\
+QUEUED & PROCESSING & Worker starts a processing run.\\
+PROCESSING & NEEDS\_REVIEW & Extraction and validation complete (human approval is mandatory in the prototype).\\
+PROCESSING & FAILED & Unrecoverable step error; error category stored.\\
+FAILED & QUEUED & Manual or bounded automatic retry (FR-21).\\
+NEEDS\_REVIEW & APPROVED / REJECTED & Authorised reviewer decision.\\
+REJECTED & QUEUED & Reprocessing requested; creates a new run (FR-21).\\
+APPROVED & ERP\_SENT / ERP\_FAILED & ERP response.\\
+ERP\_FAILED & ERP\_SENT & Retry with the same idempotency key.\\
+\hline
+\end{longtable}}
+
+\section{Activity Diagram}
+\begin{figure}[H]\centering
+\resizebox{!}{0.66\textheight}{\input{figs/fig_activity}}
+\caption{Swimlane activity diagram from upload to controlled ERP submission. Rejection ends the workflow without any ERP call.}\label{fig:activity}
+\end{figure}
+
+\section{Sequence Diagrams}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_seq_upload}}
+\caption{Upload to OCR result. The upload request returns before OCR finishes; the UI polls the status endpoint.}\label{fig:sequpload}
+\end{figure}
+
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_seq_review}}
+\caption{Review, approval and ERP submission, including the success and failure branches of the integration call.}\label{fig:seqreview}
+\end{figure}

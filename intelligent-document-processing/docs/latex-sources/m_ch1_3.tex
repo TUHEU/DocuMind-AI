@@ -1,0 +1,150 @@
+\chapter{Introduction}
+\section{Background}
+Business and public-sector workflows depend on information received in semi-structured or unstructured documents. A clerk opens a PDF, finds the supplier name, invoice number, date, tax amount and total, and types them into a business application. Repeated across hundreds of documents, this consumes staff time and introduces errors.
+
+OCR converts visual text into machine-readable text, but OCR alone does not solve the problem. A practical system must also locate the relevant fields, normalise values, apply business rules, preserve the source document, track corrections and deliver approved data to the target system.
+
+\section{Problem Statement}
+There is a gap between incoming digital documents and structured business records. A basic OCR tool returns text without knowing which text is the invoice number, or whether the total agrees with the subtotal and tax. A useful pipeline must connect acquisition, recognition, extraction, validation, human review and controlled ERP delivery in a traceable workflow.
+
+\section{Aim}
+To design and implement a secure, modular document-processing system that extracts structured information from French and English invoices and prepares validated records for ERP ingestion.
+
+\section{Specific Objectives}
+\begin{enumerate}
+\item Provide secure document upload and lifecycle tracking.
+\item Preprocess scanned images to improve text readability.
+\item Develop and evaluate a trainable OCR model for French and English text.
+\item Extract key invoice fields using configurable rules and layout information.
+\item Compute field-level confidence and identify records that need human review.
+\item Validate fields using format checks, required-field checks, duplicate detection and arithmetic rules.
+\item Provide a dashboard to review, correct, approve, reject and track documents.
+\item Store metadata, extracted values, validation outcomes and audit events in MySQL.
+\item Expose controlled interfaces to an ERP adapter or a sandbox ERP endpoint.
+\item Package the system with Docker and document a Kubernetes path.
+\end{enumerate}
+
+\section{Research and Engineering Questions}
+\begin{itemize}
+\item How much does image preprocessing improve recognition on the selected dataset?
+\item How does the custom OCR model compare with an established baseline engine?
+\item Which combination of confidence, validation rules and human review balances automation and correctness?
+\item How can documents be processed reliably without losing traceability?
+\item How can ERP-specific code be isolated from document-processing logic?
+\end{itemize}
+
+\section{Expected Contribution}
+The contribution is an integrated, measurable prototype, not an unsupported claim that a custom OCR model beats existing tools. The work combines a trainable recogniser, domain-specific extraction and validation, human review, auditability and a replaceable ERP adapter. The comparison experiment will show where the custom component works well and where it needs improvement.
+
+\begin{infobox}[Project name]
+The working name \projname{} comes from the naming shortlist in the planning phase. It is a suggestion, not a verified trademark or domain. The name is defined in one place (\texttt{\textbackslash projname}) so it can be changed everywhere at once.
+\end{infobox}
+
+\chapter{Scope, Users and Assumptions}
+\section{Initial Scope}
+The first version handles \textbf{invoices} only (supplier invoices received as PDF, PNG or JPEG), in French and English. Purchase orders, receipts, forms and administrative requests are extensions for later versions. The ERP stage uses a sandbox API or a clearly labelled mock adapter until the target ERP and its interface are confirmed.
+
+\section{Out of Scope for the First Prototype}
+\begin{itemize}
+\item Fully autonomous posting of every document without human review.
+\item Support for every document type, language, handwriting style or layout.
+\item A production connection to an ERP whose API, schema and authentication are not yet known.
+\item Claims of legal or accounting compliance without review against applicable rules.
+\item Kubernetes operations before the containerised application is stable and tested.
+\end{itemize}
+
+\section{Stakeholders and Roles}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{4.4cm}L{6.6cm}}
+\hdrrow \hdr{Role} & \hdr{Responsibility} & \hdr{Permissions / use}\\ \endhead
+Administrator & Manage users, configuration, thresholds and integration settings. & Create or deactivate users, assign roles, view system status, configure rules.\\
+Document operator & Upload and monitor incoming documents. & Upload, view status of permitted records.\\
+Reviewer / accountant & Check extracted fields and resolve uncertainty. & Correct fields, add notes, approve or reject records.\\
+Integration service account & Transfer approved records to the ERP. & Restricted API credential; cannot administer users or change source documents.\\
+Supervisor / auditor & Assess operation and traceability. & Read authorised logs, metrics and audit history.\\
+\hline
+\end{longtable}}
+
+\section{Assumptions and Dependencies}
+\begin{itemize}
+\item A labelled dataset of representative French and English invoices can be obtained lawfully or created (including synthetic invoices).
+\item Training and evaluation data can be separated to avoid leakage.
+\item The development machine runs a stable Python release; a GPU (or a cloud notebook) is optional for the prototype but useful for training.
+\item MySQL is available locally during early development.
+\item The target ERP and its integration method will be chosen before any production posting.
+\item Test documents contain no real sensitive data unless authorised and protected.
+\end{itemize}
+
+\chapter{Requirements Specification}
+Requirements use stable identifiers so that each can be traced to a design element and a test. The full Phase 1 specification, with acceptance criteria and a traceability matrix, is in the companion document.
+
+\section{Functional Requirements}
+{\tblstart\small
+\begin{longtable}{L{1.4cm}L{11.1cm}L{1.4cm}}
+\hdrrow \hdr{ID} & \hdr{Requirement} & \hdr{Priority}\\ \endhead
+FR-01 & A permitted user can sign in and sign out. & \must\\
+FR-02 & The system enforces role-based access to administrative, operational and review functions. & \must\\
+FR-03 & A user can upload a PDF, PNG or JPEG document within configured size and type limits. & \must\\
+FR-04 & The system checks file type, size and basic integrity before accepting a document. & \must\\
+FR-05 & The original file is stored in protected storage, linked to a unique document identifier and a SHA-256 hash. & \must\\
+FR-06 & The system creates a processing job and records its status and timestamps. & \must\\
+FR-07 & The preprocessing module normalises pages and applies suitable image enhancement. & \must\\
+FR-08 & The OCR component returns recognised text and confidence information where supported. & \must\\
+FR-09 & The extraction component maps recognised content to the configured invoice fields. & \must\\
+FR-10 & The validation component checks required fields, formats, arithmetic consistency and duplicate indicators. & \must\\
+FR-11 & Low-confidence or invalid records are marked for human review. & \must\\
+FR-12 & An authorised reviewer can correct fields, add a reason, and approve or reject a record. & \must\\
+FR-13 & Every material correction, approval, rejection and integration attempt is recorded in an audit trail. & \must\\
+FR-14 & Only approved records can be submitted to the ERP adapter. & \must\\
+FR-15 & The system records ERP submission status, external reference and errors without duplicating a successful submission. & \must\\
+FR-16 & Users can search and filter documents by status, date, type or identifier. & \should\\
+FR-17 & Administrators can configure validation rules and review thresholds. & \should\\
+FR-18 & The system exposes health endpoints and basic operational metrics. & \should\\
+FR-19 & The dashboard shows processing counts and the failure and review queues. & \should\\
+FR-20 & Approved structured data can be exported (JSON/CSV) when ERP connectivity is unavailable. & \could\\
+FR-21 & A failed or rejected document can be resubmitted for reprocessing as a new processing run. & \should\\
+FR-22 & The review screen shows the source page beside the extracted fields and highlights the evidence for each field. & \should\\
+\hline
+\end{longtable}}
+
+\section{Non-Functional Requirements}
+{\tblstart\small
+\begin{longtable}{L{1.7cm}L{2.5cm}L{9.7cm}}
+\hdrrow \hdr{ID} & \hdr{Category} & \hdr{Requirement and verification approach}\\ \endhead
+NFR-01 & Security & Authenticate users, authorise every protected operation, keep secrets out of source code, restrict stored files. Verified by access-control tests.\\
+NFR-02 & Privacy & Collect only necessary data, define retention, use synthetic or authorised test documents.\\
+NFR-03 & Reliability & A failed processing step yields a visible failure state and a recoverable record, never a silently lost job.\\
+NFR-04 & Traceability & Every document and processing run has stable identifiers and timestamps.\\
+NFR-05 & Maintainability & Separate API, domain logic, OCR, validation, storage and ERP adapter responsibilities.\\
+NFR-06 & Portability & Reproducible setup through documented steps and Docker images.\\
+NFR-07 & Performance & Measure upload, preprocessing, OCR, extraction and end-to-end times on a defined test set; fix targets after a baseline run.\\
+NFR-08 & Usability & Reviewers can find low-confidence fields and understand validation errors without reading logs; tested with representative users.\\
+NFR-09 & Scalability & Long-running OCR is separable from interactive API requests and can later scale independently.\\
+NFR-10 & Observability & Structured logs, health status, failure categories and durations, without logging passwords or full document content.\\
+\hline
+\end{longtable}}
+
+\section{Business Rules}
+\begin{enumerate}
+\item A document cannot be submitted to an ERP until it has passed required validations and been approved by an authorised reviewer.
+\item A low-confidence field must be visible to the reviewer; confidence is an indicator, not proof of correctness.
+\item Duplicate detection flags likely duplicates for review; it never deletes a document automatically.
+\item ERP requests use an idempotency key or an equivalent duplicate-prevention mechanism.
+\item Corrections preserve the original extracted value and record the corrected value, actor, time and reason.
+\item Failed integration attempts can be retried without creating duplicate business records.
+\end{enumerate}
+
+\section{Provisional Success Metrics}
+The targets below are \textbf{planning values}, chosen to give the experiments something concrete to aim at. They must be revised after the baseline measurement and must never be reported as results.
+
+{\tblstart\small
+\begin{longtable}{L{4.3cm}L{4.4cm}L{4.4cm}}
+\hdrrow \hdr{Metric} & \hdr{Provisional target} & \hdr{How measured}\\ \endhead
+Character error rate (CER) & Lower than the baseline engine on the same test set; absolute target set after baseline & Edit distance vs.\ verified transcription\\
+Word error rate (WER) & As above & Word-level edit distance\\
+Field F1 (invoice no., date, total) & $\geq 0.85$ after review-free extraction, to be revised & Exact/normalised match on held-out invoices\\
+Records needing review & Reported, not targeted; aim to reduce over time & Share of records flagged\\
+Processing time per page & Reported as median and 95th percentile & Timed end-to-end runs\\
+Duplicate ERP submissions & 0 in all retry tests & Sandbox integration tests\\
+\hline
+\end{longtable}}

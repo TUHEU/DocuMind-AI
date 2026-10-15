@@ -1,0 +1,157 @@
+\chapter{Frontend Design}
+\section{Main Screens}
+\begin{enumerate}
+\item \textbf{Sign-in:} authentication, validation feedback, account status.
+\item \textbf{Dashboard:} totals by status, recent activity, failures and review queue.
+\item \textbf{Upload:} file selection or drag-and-drop, accepted formats, size limits, progress.
+\item \textbf{Document list:} search, filters, status, date, pagination.
+\item \textbf{Review workspace:} source preview beside editable fields, confidence indicators, evidence highlighting, correction reason, approve and reject.
+\item \textbf{Integration history:} submission status, attempts, sanitised errors, external reference.
+\item \textbf{Administration:} users and roles, validation configuration, thresholds.
+\end{enumerate}
+
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_wireframe}}
+\caption{Wireframe of the review workspace (illustrative values from a synthetic invoice). Colour and a text label (REVIEW) are both used, so status never depends on colour alone.}\label{fig:wireframe}
+\end{figure}
+
+\section{Usability Guidelines}
+Use clear status labels, not colour alone. Keep low-confidence values prominent but let users inspect the source evidence. Show why a field failed validation. Confirm before approval or rejection and prevent double-clicks from creating duplicate submissions. Provide loading, empty, success and error states. The Flutter app never contains database credentials or ERP secrets.
+
+\chapter{Security, Privacy and Reliability}
+\section{Security Controls}
+\begin{itemize}
+\item Enforce authentication and role-based authorisation in the backend, not only in the UI.
+\item Hash passwords with a modern algorithm if local passwords are used.
+\item Keep API keys, database passwords, signing keys and ERP credentials in environment-specific secret storage; commit only placeholders in \texttt{.env.example}.
+\item Restrict extensions, MIME types, size and PDF page count; do not trust client-supplied MIME types alone.
+\item Store files outside the public directory and serve them only after an authorisation check.
+\item Use parameterised database access through the ORM and validate all input.
+\item Apply rate limits and upload quotas when exposed beyond a trusted network.
+\item Use HTTPS when deployed and restrict CORS to known origins.
+\item Redact tokens, passwords and sensitive values from logs.
+\item Back up the database and file store together and test restoration.
+\end{itemize}
+
+\section{Privacy and Governance}
+Documents may contain personal, financial or confidential information. Define who may access them, why they are kept, for how long and how deletion works. Use synthetic or anonymised samples for demonstrations. Do not send documents to external OCR or AI services unless the data-handling implications and authorisation are understood.
+
+\section{Reliability and Recovery}
+Each processing step has a status and an error category. Retries are bounded and distinguish transient from permanent errors. Job state is persisted so a restart does not silently lose work. ERP submission is idempotent where possible. Database transactions protect related metadata changes, and file writes include cleanup or reconciliation for partial failures.
+
+\chapter{Technology Stack and Rationale}
+{\tblstart\small
+\begin{longtable}{L{3.3cm}L{3.5cm}L{6.9cm}}
+\hdrrow \hdr{Technology} & \hdr{Role} & \hdr{Rationale}\\ \endhead
+Python 3.13 (recommended) & Backend and ML language & Widely used for APIs, image processing and training. Use a release supported by all dependencies; avoid pre-release interpreters.\\
+FastAPI + Uvicorn & HTTP API and ASGI server & Type-aware validation and automatic OpenAPI documentation.\\
+Pydantic & Schemas and settings & Validated, consistent data contracts.\\
+SQLAlchemy + Alembic & ORM and migrations & Organised database access and reproducible schema changes.\\
+MySQL 8 & Relational database & Metadata, fields, workflow state, users and audit records.\\
+OpenCV & Image preprocessing & Denoising, thresholding and geometric correction.\\
+PyTorch & Custom OCR model & Training, evaluation and inference.\\
+Tesseract & Baseline OCR & Established engine for a fair comparison.\\
+Flutter Web & User interface & One reusable widget toolkit for the dashboard.\\
+Docker / Compose & Packaging and local orchestration & Reproducible environments and multi-container tests.\\
+RabbitMQ + worker (later) & Background jobs & Decouples slow OCR from API requests.\\
+Kubernetes (later) & Orchestration & Deploy and scale after the containerised system is stable.\\
+\hline
+\end{longtable}}
+\section{Dependency Installation Strategy}
+Do not install every dependency at once. Start from a supported Python version and a small API environment, verify the health endpoint, then add database, upload, preprocessing, OCR and UI in separate milestones. Pin tested versions. If installation fails, diagnose the Python version and the \emph{first} real error before adding compilers or unrelated packages. (A real example from this project: installing the optional ``standard'' extras of FastAPI on a very new Python tried to compile PyYAML; installing \texttt{fastapi} and \texttt{uvicorn} without extras on Python 3.13 avoids that.)
+
+\chapter{Testing and Evaluation Plan}
+\section{Testing Levels}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{5.8cm}L{5.0cm}}
+\hdrrow \hdr{Level} & \hdr{Examples} & \hdr{Evidence}\\ \endhead
+Unit & File validation, normalisation, date/amount parsing, arithmetic rules, confidence policy. & Automated report with expected vs actual.\\
+API & Authentication, upload, list, result, approval, forbidden access. & Status codes and schema checks.\\
+Database & Foreign keys, constraints, migrations, rollback. & Test database results.\\
+OCR evaluation & CER/WER for custom model and baseline on the same test set. & Dataset description, versions, tables.\\
+End-to-end & Upload, process, review, approve, submit to sandbox. & Traceable run with state transitions.\\
+Security & Wrong-role access, unsafe files, oversized uploads, secret leakage. & Pass/fail checklist and findings.\\
+Recovery & OCR failure, database interruption, retry, duplicate ERP response. & Consistent status; no duplicate records.\\
+Usability & Reviewer completes correction and approval tasks. & Observations and improvements.\\
+\hline
+\end{longtable}}
+
+\section{Evaluation Metrics}
+\begin{itemize}
+\item \textbf{OCR:} CER, WER and inference time per page.
+\item \textbf{Extraction:} precision, recall and F1 per field with a clear matching rule.
+\item \textbf{Validation:} true errors detected, false alarms and misses on labelled cases.
+\item \textbf{Workflow:} share completed without correction, share sent to review, rejection rate, failures.
+\item \textbf{System:} median and 95th-percentile time, API error rate, retry success, resource use under a stated workload.
+\item \textbf{ERP:} valid payload rate, outcomes, duplicate-prevention tests.
+\end{itemize}
+
+\section{Experiment Design}
+Create a test set with verified transcriptions and field values. Run the custom model and the baseline on exactly the same held-out examples. Report dataset size, language mix, document types, preprocessing, model versions and hardware. Do not tune thresholds on the test set. Report field-level metrics, not a single accuracy that hides weak fields, and discuss failure cases such as skewed scans, stamps, low resolution, unusual layouts and ambiguous date or number formats.
+
+\section{Acceptance Criteria for the Prototype}
+\begin{enumerate}
+\item A permitted user uploads a supported invoice and receives a stable document ID.
+\item The original is stored privately and a persistent state is shown.
+\item A supported invoice passes preprocessing, OCR, extraction and validation.
+\item A reviewer inspects the source, corrects a field and approves or rejects.
+\item Only an approved record reaches the ERP adapter.
+\item A sandbox or mock integration demonstrates success, failure and safe retry.
+\item OCR and extraction results from a held-out set are reported with a baseline comparison.
+\item Automated tests cover core rules and authorisation boundaries.
+\item A new developer can follow the documented setup from a clean environment.
+\end{enumerate}
+
+\chapter{Implementation Roadmap}
+The project follows 18 phases grouped in four stages. The key principle is to make \emph{one complete workflow} work first -- upload, preprocess, recognise, extract, validate, review, send to a test ERP -- and only then scale the architecture.
+
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_stages}}
+\caption{The four stages of the project.}\label{fig:stages}
+\end{figure}
+
+{\tblstart\footnotesize
+\begin{longtable}{L{0.8cm}L{3.5cm}L{7.6cm}L{2.2cm}}
+\hdrrow \hdr{No.} & \hdr{Phase} & \hdr{Main deliverable} & \hdr{Status}\\ \endhead
+1 & Requirements and planning & Requirements specification (companion document) & \inprog\\
+2 & System design and architecture & Architecture, UML, ER, API specification (this document) & \inprog\\
+3 & Environment setup & Working development environment, repository & \inprog\\
+4 & Database and backend foundation & Backend connected to MySQL, models, authentication & \inprog\\
+5 & Document upload and storage & Secure upload, hashing, listing, retrieval & \todo\\
+6 & Image preprocessing & Pipeline preparing pages for OCR & \todo\\
+7 & Baseline OCR integration & OCR pipeline and baseline results & \todo\\
+8 & Custom OCR model & Trained model with documented evaluation & \todo\\
+9 & Information extraction & Structured invoice fields & \todo\\
+10 & Validation and confidence & Accepted / rejected / review-required records & \todo\\
+11 & Human review and correction & Review dashboard and correction workflow & \todo\\
+12 & ERP integration & Adapter with mock or sandbox ERP & \todo\\
+13 & Flutter Web dashboard & Functional web interface & \todo\\
+14 & Testing and evaluation & Test reports and evaluation tables & \todo\\
+15 & Security and reliability & Hardened, recoverable application & \todo\\
+16 & Dockerisation and deployment & Deployed application & \todo\\
+17 & Microservices and scalability & Modular deployment and scaling strategy & \todo\\
+18 & Documentation and defence & Report, slides, demonstration & \todo\\
+\hline
+\end{longtable}}
+\noindent Phases 1--4 are marked ``Partial'' because they are only partly complete; see Chapter~\ref{ch:status} for exact evidence.
+
+\chapter{Deployment and Operations}\label{ch:deploy}
+\section{Local Development}
+Initially run the API locally and keep uploaded files in a private data directory excluded from Git. Keep credentials in a local \texttt{.env} that Git ignores; \texttt{.env.example} contains placeholders only. Use a separate development database and never experiment with destructive resets on important data.
+
+\section{Docker Compose Stage}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_deploy_compose}}
+\caption{Docker Compose deployment. Dashed boxes are later-stage components.}\label{fig:compose}
+\end{figure}
+Compose runs the API, MySQL and later the worker in separate containers on a private network with named volumes, health checks and non-root containers where practical. MySQL is not exposed to the internet and secrets are never baked into images.
+
+\section{Kubernetes Stage}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_deploy_k8s}}
+\caption{Target Kubernetes layout (later stage).}\label{fig:k8s}
+\end{figure}
+Kubernetes is attempted only after the Compose tests pass. Likely resources are Deployments, Services, ConfigMaps, Secrets, persistent volumes or object storage, readiness and liveness probes, resource limits and an Ingress with TLS. A stateful database may stay outside the cluster for a student demonstration. Secrets are never committed as plain text.
+
+\section{Observability}
+Use structured logs with correlation IDs (document ID, run ID). Monitor queue depth, processing duration, OCR failure categories, review backlog, ERP failure rate and database availability. Do not log full document contents by default. The health endpoint reports availability without exposing credentials.

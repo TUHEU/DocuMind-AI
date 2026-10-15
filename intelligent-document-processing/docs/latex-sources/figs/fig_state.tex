@@ -1,0 +1,27 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[initial] (i) at (-0.6,0) {};
+\node[state] (up) at (1.5,0) {UPLOADED};
+\node[state] (qu) at (6.0,0) {QUEUED};
+\node[state] (pr) at (10.5,0) {PROCESSING};
+\node[stateC] (fa) at (6.0,-3.2) {FAILED};
+\node[stateA] (nr) at (10.5,-3.2) {NEEDS\_REVIEW};
+\node[stateC] (rj) at (14.6,-3.2) {REJECTED};
+\node[stateV] (ap) at (10.5,-6.4) {APPROVED};
+\node[state] (es) at (8.0,-9.6) {ERP\_SENT};
+\node[stateC] (ef) at (13.0,-9.6) {ERP\_FAILED};
+\node[final] (f) at (8.0,-11.6) {};
+\node[final] (f2) at (14.6,-5.2) {};
+\draw[arr] (i) -- (up);
+\draw[arr] (up) -- node[lbl,above]{create job} (qu);
+\draw[arr] (qu) -- node[lbl,above]{picked up} (pr);
+\draw[arr] (pr) -- node[lbl,right]{OCR, extraction, validation} (nr);
+\draw[arr] (pr.south west) -- node[lbl,above,sloped,pos=0.45]{error} (fa.north east);
+\draw[arr] (fa) -- node[lbl,left]{retry} (qu);
+\draw[arr] (nr) -- node[lbl,above]{reject} (rj);
+\draw[arr] (rj) -- (f2);
+\draw[arr] (nr) -- node[lbl,right]{approve} (ap);
+\draw[arr] (ap.south) -- ++(0,-0.5) -| node[lbl,pos=0.25,above]{submit OK} (es.north);
+\draw[arr] (ap.south) -- ++(0,-0.5) -| node[lbl,pos=0.25,above]{submit fails} (ef.north);
+\draw[arr] (ef) -- node[lbl,above]{retry} (es);
+\draw[arr] (es) -- (f);
+\end{tikzpicture}

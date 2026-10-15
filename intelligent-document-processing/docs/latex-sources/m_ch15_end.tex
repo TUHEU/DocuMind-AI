@@ -1,0 +1,96 @@
+\chapter{Implementation Status}\label{ch:status}
+This chapter separates what exists from what is only designed, so that the report never overstates progress.
+
+\section{Backend Foundation (Phase 3--4, partial)}
+{\tblstart\small
+\begin{longtable}{L{4.6cm}L{1.9cm}L{7.3cm}}
+\hdrrow \hdr{Item} & \hdr{Status} & \hdr{Evidence / note}\\ \endhead
+FastAPI application with settings from environment & \done & Package \texttt{idp-phase1.zip}, \texttt{backend/app}.\\
+Liveness endpoint \texttt{/api/v1/health} & \done & Tested; server started and endpoint answered.\\
+Readiness endpoint \texttt{/api/v1/health/db} & \done & Returns 503 when MySQL is unreachable (tested); a successful MySQL connection has \emph{not} been verified yet.\\
+Automated tests & \done & 4 tests passed in the build environment (Python 3.13).\\
+Dockerfile and Docker Compose with MySQL 8 & \inprog & Written but \emph{not} built or run yet; must be tested on the student's machine.\\
+Run on the student's Windows machine & \todo & Pending; earlier install attempts failed on Python 3.15 -- use Python 3.13.\\
+SQLAlchemy models and Alembic migrations & \todo & Next step (Phase 4).\\
+Authentication and roles & \todo & Phase 4.\\
+\hline
+\end{longtable}}
+
+\section{Not Yet Started}
+Document upload, preprocessing, baseline OCR, \textbf{custom OCR model (no model has been trained)}, extraction, validation, review workflow, ERP adapter, Flutter dashboard, security hardening, Kubernetes. The OCR model requires a labelled dataset that does not exist yet; its training and evaluation are scheduled in Phase 8.
+
+\chapter{Risks and Mitigation}
+\begin{figure}[H]\centering
+\resizebox{0.72\textwidth}{!}{\input{figs/fig_risk}}
+\caption{Risk matrix (likelihood against impact). Identifiers refer to the table below; ratings are initial judgements to be revisited each phase.}\label{fig:risk}
+\end{figure}
+{\tblstart\small
+\begin{longtable}{L{0.9cm}L{3.3cm}L{3.6cm}L{5.8cm}}
+\hdrrow \hdr{ID} & \hdr{Risk} & \hdr{Impact} & \hdr{Mitigation}\\ \endhead
+R1 & Insufficient labelled data & Custom OCR cannot be evaluated reliably. & Limit to invoices, create synthetic and carefully labelled data, document limitations, compare with a baseline.\\
+R2 & Custom OCR under-performs & Low field quality, much manual review. & Baseline comparison, error analysis, better data and preprocessing, replaceable OCR interface.\\
+R3 & Python/package incompatibility & Installation and development delays. & Python 3.13, pinned versions, incremental installs.\\
+R4 & Unclear ERP API or no Odoo access & Integration cannot be completed early. & Generic adapter interface, mock/sandbox, gather ERP requirements early.\\
+R5 & Sensitive documents exposed & Privacy and reputational harm. & Synthetic data, private storage, authorisation, minimal logs, retention rules.\\
+R6 & Duplicate ERP records & Incorrect business data. & Idempotency keys, stored attempts, retry tests.\\
+R7 & Scope grows too large & Core workflow unfinished. & Invoices only, limited field set, one baseline, one custom experiment, mock ERP.\\
+R8 & Microservice overhead & More configuration and distributed failures. & Modular monolith first; split later.\\
+R9 & OCR jobs crash & Documents get stuck. & Persisted status, bounded retries, manual retry.\\
+R10 & Training hardware or time insufficient & Model cannot be trained or tuned. & Small model, cloud notebook or GPU access, reduce dataset scope.\\
+\hline
+\end{longtable}}
+
+\chapter{Conclusion}
+\projname{} proposes a complete workflow that turns incoming invoices into reviewed, validated, ERP-ready records. Its value depends on more than OCR: reliable file handling, extraction, validation, human review, secure storage, audit history and careful integration behaviour all matter. A custom OCR model is a meaningful research component only if it is trained on an appropriate dataset and compared fairly with a baseline.
+
+The recommended order is incremental: API and database, secure upload, preprocessing and baseline OCR, custom OCR and extraction, review interface and ERP adapter. Containerisation, services, queues and Kubernetes come when the simpler system works and the added complexity is justified. Before submission, complete the supervisor details, choose the ERP or sandbox, add dataset documentation and measured results, and distinguish finished features from planned ones.
+
+\appendix
+\chapter{Glossary}
+{\tblstart\small
+\begin{longtable}{L{3.3cm}L{10.5cm}}
+\hdrrow \hdr{Term} & \hdr{Meaning}\\ \endhead
+API & Application Programming Interface: a defined way for software components to communicate.\\
+CER / WER & Character / word error rate: edit errors divided by reference length.\\
+CRNN & Convolutional recurrent neural network used for text recognition.\\
+CTC & Connectionist Temporal Classification: loss and decoding for sequence recognition without explicit alignment.\\
+ERP & Enterprise Resource Planning system.\\
+Human-in-the-loop & Workflow in which a person reviews or corrects uncertain automated results.\\
+IDP & Intelligent Document Processing: capture, recognise, extract, validate and route document information.\\
+Idempotency & Property that makes repeated identical requests produce no duplicate effect.\\
+OCR & Optical Character Recognition.\\
+RBAC & Role-Based Access Control.\\
+UML & Unified Modeling Language.\\
+\hline
+\end{longtable}}
+
+\chapter{Suggested Demonstration Script}
+\begin{enumerate}
+\item Sign in as a document operator.
+\item Upload a synthetic invoice; show its document ID and queued status.
+\item Show the processing result and extracted fields.
+\item Open a low-confidence field and compare it with the source.
+\item Correct the field and enter a review note.
+\item Approve the record and show the audit event.
+\item Submit the approved record to the sandbox ERP adapter; show the external reference.
+\item Submit again and show duplicate prevention.
+\item Show the evaluation summary: custom OCR vs.\ baseline.
+\end{enumerate}
+
+\chapter{References and Further Reading}
+Consult the official documentation and record exact versions and access dates in the final report.
+\begin{itemize}
+\item FastAPI: \url{https://fastapi.tiangolo.com/}
+\item Flutter: \url{https://docs.flutter.dev/}
+\item MySQL: \url{https://dev.mysql.com/doc/}
+\item OpenCV: \url{https://docs.opencv.org/}
+\item PyTorch: \url{https://pytorch.org/docs/}
+\item Docker: \url{https://docs.docker.com/}
+\item Kubernetes: \url{https://kubernetes.io/docs/}
+\item SQLAlchemy: \url{https://docs.sqlalchemy.org/}
+\item Alembic: \url{https://alembic.sqlalchemy.org/}
+\end{itemize}
+
+\begin{warnbox}[Before submission]
+Complete the supervisor name, confirm your institution's formatting rules, verify each diagram against the final design, and replace planned or illustrative statements with implementation evidence.
+\end{warnbox}
