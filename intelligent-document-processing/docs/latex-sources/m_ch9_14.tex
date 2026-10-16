@@ -16,7 +16,7 @@
 \end{figure}
 
 \section{Usability Guidelines}
-Use clear status labels, not colour alone. Keep low-confidence values prominent but let users inspect the source evidence. Show why a field failed validation. Confirm before approval or rejection and prevent double-clicks from creating duplicate submissions. Provide loading, empty, success and error states. The Flutter app never contains database credentials or ERP secrets.
+Use clear status labels, not colour alone. Keep low-confidence values prominent but let users inspect the source evidence. Show why a field failed validation. Confirm before approval or rejection and prevent double-clicks from creating duplicate submissions. Provide loading, empty, success and error states. The React app never contains database credentials or ERP secrets.
 
 \chapter{Security, Privacy and Reliability}
 \section{Security Controls}
@@ -51,7 +51,7 @@ MySQL 8 & Relational database & Metadata, fields, workflow state, users and audi
 OpenCV & Image preprocessing & Denoising, thresholding and geometric correction.\\
 PyTorch & Custom OCR model & Training, evaluation and inference.\\
 Tesseract & Baseline OCR & Established engine for a fair comparison.\\
-Flutter Web & User interface & One reusable widget toolkit for the dashboard.\\
+React (Node.js, Vite) & User interface & Component-based UI library; Node.js provides the development tooling and build.\\
 Docker / Compose & Packaging and local orchestration & Reproducible environments and multi-container tests.\\
 RabbitMQ + worker (later) & Background jobs & Decouples slow OCR from API requests.\\
 Kubernetes (later) & Orchestration & Deploy and scale after the containerised system is stable.\\
@@ -125,7 +125,7 @@ The project follows 18 phases grouped in four stages. The key principle is to ma
 10 & Validation and confidence & Accepted / rejected / review-required records & \todo\\
 11 & Human review and correction & Review dashboard and correction workflow & \todo\\
 12 & ERP integration & Adapter with mock or sandbox ERP & \todo\\
-13 & Flutter Web dashboard & Functional web interface & \todo\\
+13 & React web dashboard & Functional web interface & \todo\\
 14 & Testing and evaluation & Test reports and evaluation tables & \todo\\
 15 & Security and reliability & Hardened, recoverable application & \todo\\
 16 & Dockerisation and deployment & Deployed application & \todo\\

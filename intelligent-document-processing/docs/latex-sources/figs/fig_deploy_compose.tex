@@ -1,8 +1,8 @@
 \begin{tikzpicture}[x=1cm,y=1cm]
-\node[box,fill=mist,minimum width=3.0cm] (br) at (1.6,6.3) {\textbf{Browser}\\\scriptsize Flutter Web};
+\node[box,fill=mist,minimum width=3.0cm] (br) at (1.6,6.3) {\textbf{Browser}\\\scriptsize React};
 \draw[rounded corners=6pt,fill=mint!60,draw=tealdark,line width=0.9pt] (3.7,-0.4) rectangle (14.9,8.1);
 \node[font=\sffamily\bfseries\scriptsize,text=tealdark,anchor=north west] at (3.9,8.0) {Docker host (developer PC or VPS) -- network \texttt{idp-net}};
-\node[boxT,text width=2.4cm,minimum height=1.5cm] (web) at (5.7,6.0) {\stereo{container}\\\textbf{web}\\\scriptsize nginx + Flutter build};
+\node[boxT,text width=2.4cm,minimum height=1.5cm] (web) at (5.7,6.0) {\stereo{container}\\\textbf{web}\\\scriptsize nginx + React build};
 \node[boxA,text width=2.4cm,minimum height=1.5cm] (api) at (9.2,6.0) {\stereo{container}\\\textbf{backend}\\\scriptsize FastAPI :8000};
 \node[boxA,text width=2.4cm,minimum height=1.5cm,dashed] (wrk) at (12.7,6.0) {\stereo{container}\\\textbf{worker}\\\scriptsize OCR jobs (later)};
 \node[boxV,text width=2.4cm,minimum height=1.5cm] (db) at (9.2,2.8) {\stereo{container}\\\textbf{mysql}\\\scriptsize MySQL 8 :3306};

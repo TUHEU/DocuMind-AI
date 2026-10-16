@@ -210,7 +210,7 @@ Version & \docversion{} (\docdate). Supersedes version 1.0, which used a 12-step
 Status & Design specification plus an honest implementation-status chapter (Chapter~\ref{ch:status}). Performance targets are provisional until measured.\\
 Working name & \projname{} is a \emph{proposed} name. Check availability before any commercial use.\\
 Companion document & \emph{Phase 1 -- Requirements Analysis and Planning} (separate file) contains the complete Phase 1 deliverable.\\
-Primary technologies & Python, FastAPI, MySQL, Flutter Web, OpenCV, PyTorch, Docker; Kubernetes in a later stage.\\
+Primary technologies & Python, FastAPI, MySQL, React, OpenCV, PyTorch, Docker; Kubernetes in a later stage.\\
 Important limitation & No OCR accuracy, ERP compatibility or performance result is claimed here. Such results must come from experiments.\\
 \hline
 \end{longtable}
@@ -229,11 +229,11 @@ Important limitation & No OCR accuracy, ERP compatibility or performance result 
 \addcontentsline{toc}{chapter}{Abstract}
 Organisations receive invoices and other business documents as paper scans, PDFs and images. Manual data entry is slow, repetitive and prone to transcription errors. This project proposes \projname, an Intelligent Document Processing (IDP) and automated ERP ingestion system that accepts a document, improves its image quality, recognises its text, extracts structured fields, validates them, routes uncertain cases to a human reviewer and prepares approved records for an Enterprise Resource Planning (ERP) system.
 
-The solution combines a trainable optical character recognition (OCR) component with explicit extraction and validation rules. Image preprocessing uses OpenCV; text recognition is developed with PyTorch using a CRNN network trained with Connectionist Temporal Classification (CTC) loss. French and English are the target languages, and the first prototype is limited to invoices. An established OCR engine serves as a baseline so that the custom model can be evaluated honestly. The backend uses FastAPI and MySQL; a Flutter Web dashboard supports upload, review and monitoring. The system starts as a modular monolith, is containerised with Docker, and is separated into services and deployed on Kubernetes only after the interfaces are stable.
+The solution combines a trainable optical character recognition (OCR) component with explicit extraction and validation rules. Image preprocessing uses OpenCV; text recognition is developed with PyTorch using a CRNN network trained with Connectionist Temporal Classification (CTC) loss. French and English are the target languages, and the first prototype is limited to invoices. An established OCR engine serves as a baseline so that the custom model can be evaluated honestly. The backend uses FastAPI and MySQL; a React web dashboard supports upload, review and monitoring. The system starts as a modular monolith, is containerised with Docker, and is separated into services and deployed on Kubernetes only after the interfaces are stable.
 
 This document specifies requirements, architecture, UML models, data design, security, testing and a phased plan. Measured results will replace the provisional targets once experiments have been run.
 
-\medskip\noindent\textbf{Keywords:} intelligent document processing, OCR, information extraction, human-in-the-loop, ERP integration, FastAPI, Flutter, MySQL, PyTorch.
+\medskip\noindent\textbf{Keywords:} intelligent document processing, OCR, information extraction, human-in-the-loop, ERP integration, FastAPI, React, MySQL, PyTorch.
 \clearpage
 \tableofcontents
 \clearpage
@@ -413,7 +413,7 @@ The project is developed incrementally. The first milestone is a working API con
 \node[rotate=90,font=\sffamily\scriptsize\bfseries,text=navy] at (0.3,1.6) {DATA};
 \node[rotate=90,font=\sffamily\scriptsize\bfseries,text=navy] at (0.3,-0.65) {EXTERNAL};
 % presentation
-\node[boxT,minimum width=7cm,minimum height=1cm] (ui) at (8.2,9.3) {Flutter Web dashboard\\[-1pt]\scriptsize upload $\cdot$ list $\cdot$ review $\cdot$ approve $\cdot$ metrics};
+\node[boxT,minimum width=7cm,minimum height=1cm] (ui) at (8.2,9.3) {React web dashboard\\[-1pt]\scriptsize upload $\cdot$ list $\cdot$ review $\cdot$ approve $\cdot$ metrics};
 % api
 \foreach \x/\t in {2.3/Auth,5.0/Documents,7.9/Review,10.8/ERP,13.7/Health}{
   \node[box,minimum width=2.3cm] (r\t) at (\x+0.4,7.1) {\textbf{\t}\\[-2pt]\scriptsize router};}
@@ -451,7 +451,7 @@ The project is developed incrementally. The first milestone is a working API con
 {\tblstart\small
 \begin{longtable}{L{3.0cm}L{6.2cm}L{4.7cm}}
 \hdrrow \hdr{Module} & \hdr{Responsibilities} & \hdr{Input $\rightarrow$ output}\\ \endhead
-Flutter Web UI & Sign-in, upload, document list, review workspace, status dashboard. & User actions $\rightarrow$ API calls and views.\\
+React UI & Sign-in, upload, document list, review workspace, status dashboard. & User actions $\rightarrow$ API calls and views.\\
 API layer & Request validation, routing, authentication, consistent errors, API versioning. & HTTP/JSON.\\
 Authentication & User identity, roles, token lifecycle, account status. & Credentials $\rightarrow$ principal.\\
 Document service & Upload validation, metadata, storage reference, job lifecycle. & File $\rightarrow$ document ID and state.\\
@@ -484,7 +484,7 @@ intelligent-document-processing/
     alembic/            # migrations
     tests/
     Dockerfile  requirements.txt
-  frontend/flutter_app/
+  frontend/react_app/   # React (Node.js, Vite)
   ml/                   # datasets (not committed), training, evaluation
   infrastructure/       # docker, compose, kubernetes
   docs/
@@ -711,7 +711,7 @@ ERP\_FAILED & ERP\_SENT & Retry with the same idempotency key.\\
 \begin{figure}[H]\centering
 \resizebox{\textwidth}{!}{\begin{tikzpicture}[x=1cm,y=1cm]
 \def\ys{-0.9}
-\foreach \x/\n/\c in {0.9/Operator/mist, 3.7/Flutter UI/mint, 6.5/FastAPI/mint, 9.3/Document\\service/sand, 12.1/Worker\\(OCR)/sand, 14.9/MySQL/lilac}{
+\foreach \x/\n/\c in {0.9/Operator/mist, 3.7/React UI/mint, 6.5/FastAPI/mint, 9.3/Document\\service/sand, 12.1/Worker\\(OCR)/sand, 14.9/MySQL/lilac}{
   \node[box,fill=\c,minimum width=2.3cm,text width=2.1cm,minimum height=0.9cm] (p\x) at (\x,0) {\textbf{\n}};
   \draw[lifeline] (\x,-0.45) -- (\x,-12.8);
   \fill[navy!15] (\x-0.08,-1.2) rectangle (\x+0.08,-12.2);}
@@ -739,7 +739,7 @@ ERP\_FAILED & ERP\_SENT & Retry with the same idempotency key.\\
 
 \begin{figure}[H]\centering
 \resizebox{\textwidth}{!}{\begin{tikzpicture}[x=1cm,y=1cm]
-\foreach \x/\n/\c in {0.9/Reviewer/mist, 3.7/Flutter UI/mint, 6.5/FastAPI/mint, 9.3/Review +\\audit/sand, 12.1/ERP\\adapter/sand, 14.9/ERP\\(Odoo or mock)/blush}{
+\foreach \x/\n/\c in {0.9/Reviewer/mist, 3.7/React UI/mint, 6.5/FastAPI/mint, 9.3/Review +\\audit/sand, 12.1/ERP\\adapter/sand, 14.9/ERP\\(Odoo or mock)/blush}{
   \node[box,fill=\c,minimum width=2.3cm,text width=2.1cm,minimum height=0.9cm] at (\x,0) {\textbf{\n}};
   \draw[lifeline] (\x,-0.45) -- (\x,-13.6);
   \fill[navy!15] (\x-0.08,-1.2) rectangle (\x+0.08,-13.0);}
@@ -1029,7 +1029,7 @@ Use 400 for malformed requests, 401 unauthenticated, 403 insufficient permission
 \end{figure}
 
 \section{Usability Guidelines}
-Use clear status labels, not colour alone. Keep low-confidence values prominent but let users inspect the source evidence. Show why a field failed validation. Confirm before approval or rejection and prevent double-clicks from creating duplicate submissions. Provide loading, empty, success and error states. The Flutter app never contains database credentials or ERP secrets.
+Use clear status labels, not colour alone. Keep low-confidence values prominent but let users inspect the source evidence. Show why a field failed validation. Confirm before approval or rejection and prevent double-clicks from creating duplicate submissions. Provide loading, empty, success and error states. The React app never contains database credentials or ERP secrets.
 
 \chapter{Security, Privacy and Reliability}
 \section{Security Controls}
@@ -1064,7 +1064,7 @@ MySQL 8 & Relational database & Metadata, fields, workflow state, users and audi
 OpenCV & Image preprocessing & Denoising, thresholding and geometric correction.\\
 PyTorch & Custom OCR model & Training, evaluation and inference.\\
 Tesseract & Baseline OCR & Established engine for a fair comparison.\\
-Flutter Web & User interface & One reusable widget toolkit for the dashboard.\\
+React (Node.js, Vite) & User interface & Component-based UI library; Node.js provides the development tooling and build.\\
 Docker / Compose & Packaging and local orchestration & Reproducible environments and multi-container tests.\\
 RabbitMQ + worker (later) & Background jobs & Decouples slow OCR from API requests.\\
 Kubernetes (later) & Orchestration & Deploy and scale after the containerised system is stable.\\
@@ -1124,7 +1124,7 @@ The project follows 18 phases grouped in four stages. The key principle is to ma
 \foreach \i/\c/\t/\p/\d in {%
   {0/teal/Stage A/Phases 1--5/Foundation: requirements, design, setup, database and backend, secure upload},%
   {1/amber/Stage B/Phases 6--10/Intelligence: preprocessing, baseline OCR, custom OCR, extraction, validation},%
-  {2/violet/Stage C/Phases 11--13/Application: human review, ERP integration, Flutter Web dashboard},%
+  {2/violet/Stage C/Phases 11--13/Application: human review, ERP integration, React web dashboard},%
   {3/coral/Stage D/Phases 14--18/Delivery: testing, security, deployment, scaling, report and defence}}{
   \pgfmathsetmacro{\x}{\i*(\w+0.15)}
   \fill[\c!85!black] (\x,0) -- (\x+\w-0.35,0) -- (\x+\w,-0.7) -- (\x+\w-0.35,-1.4) -- (\x,-1.4) -- (\x+0.35,-0.7) -- cycle;
@@ -1151,7 +1151,7 @@ The project follows 18 phases grouped in four stages. The key principle is to ma
 10 & Validation and confidence & Accepted / rejected / review-required records & \todo\\
 11 & Human review and correction & Review dashboard and correction workflow & \todo\\
 12 & ERP integration & Adapter with mock or sandbox ERP & \todo\\
-13 & Flutter Web dashboard & Functional web interface & \todo\\
+13 & React web dashboard & Functional web interface & \todo\\
 14 & Testing and evaluation & Test reports and evaluation tables & \todo\\
 15 & Security and reliability & Hardened, recoverable application & \todo\\
 16 & Dockerisation and deployment & Deployed application & \todo\\
@@ -1168,10 +1168,10 @@ Initially run the API locally and keep uploaded files in a private data director
 \section{Docker Compose Stage}
 \begin{figure}[H]\centering
 \resizebox{\textwidth}{!}{\begin{tikzpicture}[x=1cm,y=1cm]
-\node[box,fill=mist,minimum width=3.0cm] (br) at (1.6,6.3) {\textbf{Browser}\\\scriptsize Flutter Web};
+\node[box,fill=mist,minimum width=3.0cm] (br) at (1.6,6.3) {\textbf{Browser}\\\scriptsize React};
 \draw[rounded corners=6pt,fill=mint!60,draw=tealdark,line width=0.9pt] (3.7,-0.4) rectangle (14.9,8.1);
 \node[font=\sffamily\bfseries\scriptsize,text=tealdark,anchor=north west] at (3.9,8.0) {Docker host (developer PC or VPS) -- network \texttt{idp-net}};
-\node[boxT,text width=2.4cm,minimum height=1.5cm] (web) at (5.7,6.0) {\stereo{container}\\\textbf{web}\\\scriptsize nginx + Flutter build};
+\node[boxT,text width=2.4cm,minimum height=1.5cm] (web) at (5.7,6.0) {\stereo{container}\\\textbf{web}\\\scriptsize nginx + React build};
 \node[boxA,text width=2.4cm,minimum height=1.5cm] (api) at (9.2,6.0) {\stereo{container}\\\textbf{backend}\\\scriptsize FastAPI :8000};
 \node[boxA,text width=2.4cm,minimum height=1.5cm,dashed] (wrk) at (12.7,6.0) {\stereo{container}\\\textbf{worker}\\\scriptsize OCR jobs (later)};
 \node[boxV,text width=2.4cm,minimum height=1.5cm] (db) at (9.2,2.8) {\stereo{container}\\\textbf{mysql}\\\scriptsize MySQL 8 :3306};
@@ -1247,7 +1247,7 @@ Authentication and roles & \todo & Phase 4.\\
 \end{longtable}}
 
 \section{Not Yet Started}
-Document upload, preprocessing, baseline OCR, \textbf{custom OCR model (no model has been trained)}, extraction, validation, review workflow, ERP adapter, Flutter dashboard, security hardening, Kubernetes. The OCR model requires a labelled dataset that does not exist yet; its training and evaluation are scheduled in Phase 8.
+Document upload, preprocessing, baseline OCR, \textbf{custom OCR model (no model has been trained)}, extraction, validation, review workflow, ERP adapter, React dashboard, security hardening, Kubernetes. The OCR model requires a labelled dataset that does not exist yet; its training and evaluation are scheduled in Phase 8.
 
 \chapter{Risks and Mitigation}
 \begin{figure}[H]\centering
@@ -1330,7 +1330,7 @@ UML & Unified Modeling Language.\\
 Consult the official documentation and record exact versions and access dates in the final report.
 \begin{itemize}
 \item FastAPI: \url{https://fastapi.tiangolo.com/}
-\item Flutter: \url{https://docs.flutter.dev/}
+\item React: \url{https://react.dev/}
 \item MySQL: \url{https://dev.mysql.com/doc/}
 \item OpenCV: \url{https://docs.opencv.org/}
 \item PyTorch: \url{https://pytorch.org/docs/}

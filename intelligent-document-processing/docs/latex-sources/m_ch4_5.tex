@@ -11,7 +11,7 @@ The project is developed incrementally. The first milestone is a working API con
 {\tblstart\small
 \begin{longtable}{L{3.0cm}L{6.2cm}L{4.7cm}}
 \hdrrow \hdr{Module} & \hdr{Responsibilities} & \hdr{Input $\rightarrow$ output}\\ \endhead
-Flutter Web UI & Sign-in, upload, document list, review workspace, status dashboard. & User actions $\rightarrow$ API calls and views.\\
+React UI & Sign-in, upload, document list, review workspace, status dashboard. & User actions $\rightarrow$ API calls and views.\\
 API layer & Request validation, routing, authentication, consistent errors, API versioning. & HTTP/JSON.\\
 Authentication & User identity, roles, token lifecycle, account status. & Credentials $\rightarrow$ principal.\\
 Document service & Upload validation, metadata, storage reference, job lifecycle. & File $\rightarrow$ document ID and state.\\
@@ -44,7 +44,7 @@ intelligent-document-processing/
     alembic/            # migrations
     tests/
     Dockerfile  requirements.txt
-  frontend/flutter_app/
+  frontend/react_app/   # React (Node.js, Vite)
   ml/                   # datasets (not committed), training, evaluation
   infrastructure/       # docker, compose, kubernetes
   docs/

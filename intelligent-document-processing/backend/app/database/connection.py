@@ -10,7 +10,7 @@ from app.core.config import get_settings
 def get_engine() -> Engine:
     """Create the SQLAlchemy engine lazily so the API can start without MySQL."""
     return create_engine(
-        get_settings().database_url,
+        get_settings().sqlalchemy_url,
         pool_pre_ping=True,
         connect_args={"connect_timeout": 3},
     )

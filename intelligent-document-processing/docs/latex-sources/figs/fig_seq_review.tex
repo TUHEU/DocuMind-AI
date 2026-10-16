@@ -1,5 +1,5 @@
 \begin{tikzpicture}[x=1cm,y=1cm]
-\foreach \x/\n/\c in {0.9/Reviewer/mist, 3.7/Flutter UI/mint, 6.5/FastAPI/mint, 9.3/Review +\\audit/sand, 12.1/ERP\\adapter/sand, 14.9/ERP\\(Odoo or mock)/blush}{
+\foreach \x/\n/\c in {0.9/Reviewer/mist, 3.7/React UI/mint, 6.5/FastAPI/mint, 9.3/Review +\\audit/sand, 12.1/ERP\\adapter/sand, 14.9/ERP\\(Odoo or mock)/blush}{
   \node[box,fill=\c,minimum width=2.3cm,text width=2.1cm,minimum height=0.9cm] at (\x,0) {\textbf{\n}};
   \draw[lifeline] (\x,-0.45) -- (\x,-13.6);
   \fill[navy!15] (\x-0.08,-1.2) rectangle (\x+0.08,-13.0);}

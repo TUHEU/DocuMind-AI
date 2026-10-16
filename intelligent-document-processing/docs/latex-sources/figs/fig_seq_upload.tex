@@ -1,6 +1,6 @@
 \begin{tikzpicture}[x=1cm,y=1cm]
 \def\ys{-0.9}
-\foreach \x/\n/\c in {0.9/Operator/mist, 3.7/Flutter UI/mint, 6.5/FastAPI/mint, 9.3/Document\\service/sand, 12.1/Worker\\(OCR)/sand, 14.9/MySQL/lilac}{
+\foreach \x/\n/\c in {0.9/Operator/mist, 3.7/React UI/mint, 6.5/FastAPI/mint, 9.3/Document\\service/sand, 12.1/Worker\\(OCR)/sand, 14.9/MySQL/lilac}{
   \node[box,fill=\c,minimum width=2.3cm,text width=2.1cm,minimum height=0.9cm] (p\x) at (\x,0) {\textbf{\n}};
   \draw[lifeline] (\x,-0.45) -- (\x,-12.8);
   \fill[navy!15] (\x-0.08,-1.2) rectangle (\x+0.08,-12.2);}
