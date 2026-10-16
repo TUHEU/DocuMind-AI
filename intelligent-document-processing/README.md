@@ -6,6 +6,8 @@ Contents of this Phase 1 folder:
 - `docker-compose.yml` : backend + MySQL 8 (written, not yet run on your machine).
 - `docs/` : Phase 1 requirements specification and the full design document (PDF + LaTeX sources).
 
+**How to run it (with and without Docker): see `RUNNING.md`.**
+
 **Status:** Phase 1 documents are drafted and wait for supervisor decisions (see the last chapter of the Phase 1 PDF). The backend covers only the start of Phases 3--4. No OCR model has been trained.
 
 ## Structure
