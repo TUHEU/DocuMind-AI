@@ -1,0 +1,43 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+% layer bands
+\fill[mist]  (0,8.5) rectangle (16,10.1);
+\fill[mint]  (0,6.1) rectangle (16,8.1);
+\fill[sand]  (0,3.0) rectangle (16,5.7);
+\fill[lilac] (0,0.6) rectangle (16,2.6);
+\fill[blush] (0,-1.4) rectangle (16,0.1);
+\node[rotate=90,font=\sffamily\scriptsize\bfseries,text=navy] at (0.3,9.3) {PRESENTATION};
+\node[rotate=90,font=\sffamily\scriptsize\bfseries,text=navy] at (0.3,7.1) {API LAYER};
+\node[rotate=90,font=\sffamily\scriptsize\bfseries,text=navy] at (0.3,4.35) {DOMAIN SERVICES};
+\node[rotate=90,font=\sffamily\scriptsize\bfseries,text=navy] at (0.3,1.6) {DATA};
+\node[rotate=90,font=\sffamily\scriptsize\bfseries,text=navy] at (0.3,-0.65) {EXTERNAL};
+% presentation
+\node[boxT,minimum width=7cm,minimum height=1cm] (ui) at (8.2,9.3) {React web dashboard\\[-1pt]\scriptsize upload $\cdot$ list $\cdot$ review $\cdot$ approve $\cdot$ metrics};
+% api
+\foreach \x/\t in {2.3/Auth,5.0/Documents,7.9/Review,10.8/ERP,13.7/Health}{
+  \node[box,minimum width=2.3cm] (r\t) at (\x+0.4,7.1) {\textbf{\t}\\[-2pt]\scriptsize router};}
+\node[font=\sffamily\scriptsize,text=slate] at (8.2,7.85) {FastAPI $\cdot$ Pydantic validation $\cdot$ JWT / RBAC $\cdot$ versioned routes \texttt{/api/v1}};
+% domain
+\foreach \x/\t/\s in {2.3/Document/service,4.95/Pre-/processing,7.6/OCR/engine,10.25/Extraction/rules,12.9/Validation/+ review,15.0/ERP/adapter}{}
+\node[boxA,text width=2.0cm,minimum height=1.3cm] (sdoc) at (2.4,4.35)  {\textbf{Document}\\service};
+\node[boxA,text width=2.0cm,minimum height=1.3cm] (spre) at (4.9,4.35)  {\textbf{Preprocessing}\\OpenCV};
+\node[boxA,text width=2.0cm,minimum height=1.3cm] (socr) at (7.4,4.35)  {\textbf{OCR engine}\\Tesseract\\+ CRNN};
+\node[boxA,text width=2.0cm,minimum height=1.3cm] (sext) at (9.9,4.35)  {\textbf{Extraction}\\rules + layout};
+\node[boxA,text width=2.0cm,minimum height=1.3cm] (sval) at (12.4,4.35) {\textbf{Validation}\\+ review};
+\node[boxA,text width=2.0cm,minimum height=1.3cm] (serp) at (14.9,4.35) {\textbf{ERP}\\adapter};
+% data
+\node[boxV,minimum width=3.6cm,minimum height=1.1cm] (fs) at (3.6,1.6) {\textbf{Protected file storage}\\\scriptsize originals $\cdot$ page images};
+\node[boxV,minimum width=2.6cm,minimum height=1.1cm,dashed] (q) at (7.1,1.6) {\textbf{Job queue}\\\scriptsize later stage};
+\node[boxV,minimum width=4.0cm,minimum height=1.1cm] (db) at (10.8,1.6) {\textbf{MySQL 8}\\\scriptsize users $\cdot$ documents $\cdot$ fields $\cdot$ audit};
+% external
+\node[boxC,minimum width=4.2cm,minimum height=0.9cm] (erp) at (12.9,-0.65) {ERP\\[-2pt]\scriptsize Odoo or mock API};
+% arrows
+\draw[arr] (ui.south) -- ++(0,-0.35) -| (rDocuments.north);
+\draw[arr] (rDocuments.south) -- ++(0,-0.4) -| (sdoc.north);
+\draw[arr] (rReview.south) -- ++(0,-0.4) -| (sval.north);
+\draw[arr] (rERP.south) -- ++(0,-0.4) -| (serp.north);
+\draw[arrd] (sdoc.south) -- (sdoc.south |- fs.north);
+\draw[arrd] (spre.south) -- (spre.south |- fs.north);
+\draw[arrd] (sext.south) -- (sext.south |- db.north);
+\draw[arrd] (sval.south) -- (sval.south |- db.north);
+\draw[arr]  (serp.south) -- (serp.south |- erp.north);
+\end{tikzpicture}

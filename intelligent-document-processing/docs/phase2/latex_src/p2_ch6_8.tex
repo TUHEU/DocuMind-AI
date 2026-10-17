@@ -1,0 +1,256 @@
+\chapter{User Interface Design}\label{ch:p2ui}
+\emph{Story US-10.} The chapter sketches the dashboard, the upload page and the extraction-results and review screens, and defines the loading, success and error states.
+
+\section{Users and tasks}
+{\tblstart\small
+\begin{longtable}{L{2.6cm}L{11.2cm}}
+\hdrrow \hdr{User} & \hdr{Main tasks on screen}\\ \endhead
+Operator & Upload invoices, see whether each one was accepted, follow its status, request reprocessing of a failed file.\\
+Reviewer & Work through the review queue: compare the source page with the extracted values, correct, approve or reject, then submit to the ERP and check the result.\\
+Administrator & Create users and set roles, adjust thresholds and limits, read the audit trail.\\
+\hline
+\end{longtable}}
+
+\section{Screen map}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_sitemap}}
+\caption{Navigation map. Colour shows which roles may open a screen; the role is always checked again in the backend.}\label{fig:p2sitemap}
+\end{figure}
+
+\section{Dashboard}
+The dashboard answers three questions at a glance: how much work is waiting, what failed, and what needs a person. The review queue is the main element and lists the oldest items first.
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_wf_dash}}
+\caption{Dashboard wireframe with synthetic values. Status is always shown as text as well as colour.}\label{fig:p2dash}
+\end{figure}
+
+\section{Upload page}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_wf_upload}}
+\caption{Upload wireframe showing a finished upload, one in progress and one refused file.}\label{fig:p2upload}
+\end{figure}
+The accepted formats and limits are shown before the user chooses a file, so refusals are rare, and a refused file states the reason and what to do.
+
+\section{Extraction results and review}
+The review workspace puts the source page on the left and the editable fields on the right. Selecting a field highlights its region on the page (FR-22). A field below the review threshold or with a failed rule is marked with the word REVIEW as well as a colour. Approve is disabled while a BLOCKING finding is open and explains why. Rejecting asks for a reason.
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_wireframe}}
+\caption{Review workspace wireframe (synthetic invoice).}\label{fig:p2review}
+\end{figure}
+
+\section{Other screens}
+{\tblstart\small
+\begin{longtable}{L{3.2cm}L{10.6cm}}
+\hdrrow \hdr{Screen} & \hdr{Content}\\ \endhead
+Sign in & E-mail and password; clear message for wrong credentials and for a locked account.\\
+Document list & Search by ID, file name or invoice number; filter by status, type and date; paged table; link to detail.\\
+Integration history & Attempts for one document: time, status, ERP reference, sanitised error, retry button when allowed.\\
+Users and roles & Table of users, create form, role and active switch.\\
+Rules and thresholds & The settings from \texttt{system\_settings} with description and last change; each change is audited.\\
+Audit view & Filter by document, user and action; read-only.\\
+\hline
+\end{longtable}}
+
+\section{Loading, success, empty and error states}
+{\tblstart\footnotesize
+\begin{longtable}{L{2.6cm}L{2.8cm}L{2.8cm}L{2.8cm}L{3.0cm}}
+\hdrrow \hdr{Screen} & \hdr{Loading} & \hdr{Empty} & \hdr{Success} & \hdr{Error}\\ \endhead
+Sign in & Button shows a spinner and is disabled. & --- & Go to dashboard. & Message under the form; no hint which of e-mail or password was wrong.\\
+Dashboard & Placeholder tiles. & ``Nothing waiting'' message. & Counts and queue. & Banner with retry; page stays usable.\\
+Upload & Progress bar per file. & Drop zone with instructions. & Document ID and status shown. & Reason and fix per file (413, 415, 400).\\
+Document list & Skeleton rows. & ``No documents match'' with a clear-filters link. & Rows. & Banner with retry.\\
+Review & Source and fields load independently. & Document not ready yet: show current status. & Toast ``Approved''. & Field-level messages; conflict (409) explains the current state.\\
+Integration history & Skeleton rows. & ``Not submitted yet''. & Reference shown. & Sanitised error and retry.\\
+Administration & Spinner on save. & No settings changed yet. & Toast ``Saved''. & Validation message next to the field.\\
+\hline
+\end{longtable}}
+
+\section{Frontend structure and usability}
+The React application is built with Vite. It keeps one API client module that adds the token, parses the error format of Chapter~\ref{ch:p2api} and exposes typed functions; screens never call the network directly. Server data is requested through a data-fetching layer (a library such as TanStack Query is proposed, to be confirmed in Phase 6). The application holds no database or ERP credentials. The token is kept in memory so that it is lost when the tab closes; whether to use a refresh mechanism is an open decision (Section~\ref{sec:p2open}).
+
+Usability checks planned for the prototype: a keyboard-only pass through sign-in, upload and review; status never conveyed by colour alone; text contrast checked; and a short task test in which a reviewer finds and fixes a planted wrong value, as required by objective O7.
+
+% =====================================================================
+\chapter{Security and ERP Integration}\label{ch:p2sec}
+\emph{Story US-11.} The chapter defines access permissions and credential management, file validation and data protection, the target Odoo version and available API, and validation and error handling before ERP submission.
+
+\section{Threats and controls}
+{\tblstart\footnotesize
+\begin{longtable}{L{3.2cm}L{4.8cm}L{2.6cm}L{3.2cm}}
+\hdrrow \hdr{Threat} & \hdr{Control} & \hdr{Enforced in} & \hdr{How it will be tested}\\ \endhead
+Unauthorised access to documents & Bearer token, role check on every route, ownership check for operators, \texttt{404} for hidden items. & Backend & Test each role against each endpoint.\\
+Password guessing & Password hashing, lockout counter, rate limit on login. & Backend & Repeated failed logins.\\
+Malicious or corrupt upload & Type, content, size and page checks; files stored outside the web root under opaque keys; original filename never used as a path. & Backend, storage & Wrong-type, oversized and renamed files.\\
+Path traversal or file disclosure & No path in any response; file served only after an authorisation check. & Backend & Request files without or with the wrong role.\\
+Injection & Parameterised queries through the ORM; Pydantic validation of all input. & Backend & Hostile strings in every text field.\\
+Tampering with history & Append-only audit table with triggers; corrections stored, never overwritten. & Database & Update and delete attempts (done, Section~\ref{sec:p2dbtests}).\\
+Secret leakage & Secrets only in environment variables or a secret store; \texttt{.env} excluded from Git; tokens and passwords redacted from logs. & Deployment, backend & Repository and log review.\\
+Cross-site calls & CORS limited to known origins (already implemented and tested). & Backend & Allowed and blocked origin tests.\\
+Duplicate or lost ERP record & Idempotency key; transaction with row lock; stored attempts. & Backend, database & Retry and failure-injection tests.\\
+Data exposure through logs or errors & Generic error messages; sanitised error text stored. & Backend & Force errors and inspect responses and logs.\\
+\hline
+\end{longtable}}
+
+\section{Credentials and configuration}
+\begin{itemize}
+\item Database password, token signing key and ERP credentials are read from environment variables. The repository contains only \texttt{.env.example} with placeholders.
+\item The ERP account is a dedicated integration user with only the rights needed to create vendor bills, and an API key rather than a personal password.
+\item Credentials are different for development, demonstration and any later deployment, and can be rotated without code changes.
+\item Passwords are stored with a slow, salted hash (Argon2id or bcrypt); the password is never logged.
+\end{itemize}
+
+\section{Data protection}
+Invoices contain business and sometimes personal data. Access follows the role table of Chapter~\ref{ch:p2api}. Stored files are not publicly reachable. Transport uses HTTPS outside local development. Documents are not sent to external OCR or AI services. Backups of the database and the file store are taken together, and restoration is tested once. A retention period and a deletion procedure must be decided before real data is used.
+
+\section{ERP integration}
+\subsection{Target and options}
+The target ERP is Odoo, reached through its external API and never by writing into its database. Odoo changes its external API between versions, so the version decides the implementation.
+{\tblstart\small
+\begin{longtable}{L{3.4cm}L{5.4cm}L{5.0cm}}
+\hdrrow \hdr{Option} & \hdr{Reported situation} & \hdr{Use in this project}\\ \endhead
+Mock ERP & Small service written for the project; same contract as the adapter. & First target; used for all automated tests.\\
+XML-RPC / JSON-RPC & Reported as the most compatible choice for Odoo 14 to 18 and scheduled for removal in Odoo 20. & Implement if the available Odoo is version 18 or older.\\
+JSON-2 API (bearer key, \texttt{/json/2/\allowbreak\{model\}/\allowbreak\{method\}}) & Reported as introduced in Odoo 19 as the replacement. & Implement if the available Odoo is version 19 or newer.\\
+\hline
+\end{longtable}}
+\begin{warnbox}[Verify before implementing]
+The statements in this table come from a third-party summary of the Odoo documentation (Apideck, ``How to integrate with the Odoo API''), not from the official page for a specific version, which could not be read during this phase. The exact endpoints, authentication and removal dates must be confirmed in the official documentation of the Odoo version that is actually available. This is open decision P2-D1.
+\end{warnbox}
+
+\subsection{Adapter interface}
+The rest of the system sees only this interface. A mock, an XML-RPC and a JSON-2 adapter can implement it.
+\begin{lstlisting}[language=Python]
+class ErpAdapter(Protocol):
+    name: str                                   # "MOCK" or "ODOO"
+    def check_payload(self, record: ApprovedRecord) -> list[Finding]: ...
+    def submit(self, record: ApprovedRecord, idempotency_key: str) -> ErpResult: ...
+
+class ErpResult:
+    ok: bool
+    external_ref: str | None     # id of the created vendor bill
+    error_category: str | None   # AUTH, VALIDATION, TIMEOUT, SERVER, DUPLICATE
+    message: str | None          # sanitised
+    http_status: int | None
+\end{lstlisting}
+
+\subsection{Field mapping}
+The Phase 1 field list maps to a vendor bill. The Odoo names are candidates for a vendor bill (\texttt{account.move} with the vendor-bill type) and must be checked against the chosen version.
+{\tblstart\small
+\begin{longtable}{L{3.4cm}L{4.2cm}L{6.2cm}}
+\hdrrow \hdr{Extracted field} & \hdr{Candidate Odoo field} & \hdr{Note}\\ \endhead
+Supplier name, tax ID & Partner (\texttt{partner\_id}) & Find by tax ID or name; creating a new partner automatically is not done. If none matches, the reviewer chooses or the submission is blocked (ERP\_SCHEMA).\\
+Invoice number & Vendor reference (\texttt{ref}) & Also used for the duplicate check on the ERP side.\\
+Invoice date & Invoice date & ISO format.\\
+Due date & Due date & Optional.\\
+PO reference & Origin & Optional.\\
+Line items & Invoice lines & Quantity, unit price and description per line; if no lines were extracted, one line with the subtotal is proposed and the reviewer confirms.\\
+Subtotal, tax, total & Computed by the ERP from lines and taxes & Compared with the extracted values; a difference is a finding, not silently overridden.\\
+Currency & Currency & Must exist in the ERP.\\
+\hline
+\end{longtable}}
+Posting the bill (confirming it in accounting) is a separate ERP step. The prototype creates the bill in draft state so an accountant can post it; changing this is a decision for the ERP owner.
+
+\subsection{Submission flow and idempotency}
+\begin{figure}[H]\centering
+\resizebox{0.95\textwidth}{!}{\input{figs/fig_seq_review}}
+\caption{Review, approval and ERP submission.}\label{fig:p2seqreview}
+\end{figure}
+\begin{enumerate}
+\item The service checks that the status is APPROVED or ERP\_FAILED and locks the document row.
+\item It runs \texttt{check\_payload}. Any BLOCKING finding stops the submission before anything is sent and the status stays APPROVED.
+\item It inserts an \texttt{erp\_attempts} row (PENDING) with the next attempt number and the key \texttt{idp-<document\_\allowbreak id>}, then commits.
+\item It calls \texttt{submit}. On success the attempt becomes SENT with the ERP reference and the document becomes ERP\_SENT. On failure the attempt becomes FAILED with a category and the document becomes ERP\_FAILED.
+\item To our knowledge Odoo has no built-in idempotency-key header. Before creating a bill on a retry, the Odoo adapter therefore searches for an existing bill with the same vendor reference and partner and, if found, returns it as success. This behaviour must be confirmed against the real ERP.
+\end{enumerate}
+
+\subsection{Errors and retries}
+{\tblstart\small
+\begin{longtable}{L{2.6cm}L{4.6cm}L{6.6cm}}
+\hdrrow \hdr{Category} & \hdr{Example} & \hdr{Handling (values provisional)}\\ \endhead
+AUTH & Wrong or expired ERP key. & No automatic retry; alert the administrator; document stays ERP\_FAILED.\\
+VALIDATION & ERP refuses a value. & No automatic retry; reviewer corrects the data, then submits again.\\
+TIMEOUT & No answer in time. & Retry up to three times with growing delay, same key; the pre-send search prevents a duplicate.\\
+SERVER & ERP error 5xx. & Same as timeout.\\
+DUPLICATE & A bill with this reference exists. & Treated as success and the existing reference is stored.\\
+\hline
+\end{longtable}}
+
+\subsection{Mock ERP contract}
+The mock accepts \texttt{POST /vendor-bills} with an \texttt{Idempotency-Key} header. A new key returns \texttt{201} and a reference. A repeated key returns \texttt{200} with the same reference and creates nothing. Switches in the request let tests force a timeout, a \texttt{401} and a validation error. The same test suite runs against the mock now and against Odoo when it is available.
+
+% =====================================================================
+\chapter{Traceability, Open Decisions and Next Steps}\label{ch:p2trace}
+\section{Acceptance criteria of the six stories}
+``Designed'' means the design is written in this document or in a companion file. ``Checked'' means a program verified part of it. It does not mean implemented.
+{\tblstart\footnotesize
+\begin{longtable}{L{1.1cm}L{5.0cm}L{2.0cm}L{5.7cm}}
+\hdrrow \hdr{Story} & \hdr{Acceptance criterion} & \hdr{Where} & \hdr{State}\\ \endhead
+US-06 & React + Vite as frontend. & Ch.~\ref{ch:p2arch} & Designed.\\
+US-06 & FastAPI as backend API. & Ch.~\ref{ch:p2arch} & Designed; health endpoints exist and are tested.\\
+US-06 & MySQL as relational database. & Ch.~\ref{ch:p2arch}, \ref{ch:p2db} & Designed; schema checked on MariaDB.\\
+US-06 & OCR pipeline and ERP integration in a diagram. & Fig.~\ref{fig:p2arch}, \ref{fig:p2pipeline} & Designed.\\
+US-07 & Required entities identified. & Ch.~\ref{ch:p2db} & Designed (\nTables{} tables).\\
+US-07 & Tables for documents, extracted fields, review decisions. & Ch.~\ref{ch:p2db} & Designed and checked.\\
+US-07 & Primary keys, foreign keys, relationships. & Fig.~\ref{fig:p2er} & Designed and checked (nine negative tests).\\
+US-07 & Processing status and audit history. & Ch.~\ref{ch:p2db} & Designed and checked (status values, append-only trigger).\\
+US-08 & Upload and file validation. & Sec.~\ref{sec:p2upload} & Designed.\\
+US-08 & Preprocessing and OCR. & Stages 4--5 & Designed; not built.\\
+US-08 & Extraction and confidence scoring. & Stages 6--7 & Designed; thresholds provisional.\\
+US-08 & Human review of uncertain results. & Ch.~\ref{ch:p2flow} & Designed.\\
+US-08 & Approved path to ERP. & Stage 10, Ch.~\ref{ch:p2sec} & Designed.\\
+US-09 & Upload and retrieval endpoints. & Ch.~\ref{ch:p2api} & Designed and checked (contract validates).\\
+US-09 & Endpoints for fields and review decisions. & Ch.~\ref{ch:p2api} & Designed and checked.\\
+US-09 & Response formats and error handling. & Ch.~\ref{ch:p2api} & Designed.\\
+US-09 & Authentication and authorisation. & Ch.~\ref{ch:p2api} & Designed; token lifetime open.\\
+US-10 & Dashboard sketch. & Fig.~\ref{fig:p2dash} & Designed.\\
+US-10 & Upload page. & Fig.~\ref{fig:p2upload} & Designed.\\
+US-10 & Extraction results and review screens. & Fig.~\ref{fig:p2review} & Designed.\\
+US-10 & Loading, success and error states. & Ch.~\ref{ch:p2ui} & Designed.\\
+US-11 & Access permissions and credential management. & Ch.~\ref{ch:p2api}, \ref{ch:p2sec} & Designed.\\
+US-11 & File validation and data protection. & Sec.~\ref{sec:p2upload}, Ch.~\ref{ch:p2sec} & Designed.\\
+US-11 & \textbf{Target Odoo version and available API.} & Ch.~\ref{ch:p2sec} & \textbf{Not closed.} Options documented; needs the real version (P2-D1).\\
+US-11 & Validation and error handling before ERP submission. & Ch.~\ref{ch:p2sec} & Designed.\\
+\hline
+\end{longtable}}
+
+\section{Open decisions}\label{sec:p2open}
+{\tblstart\small
+\begin{longtable}{L{1.4cm}L{6.4cm}L{6.0cm}}
+\hdrrow \hdr{ID} & \hdr{Decision needed} & \hdr{Effect}\\ \endhead
+P2-D1 & Which Odoo version and access (cloud, on-premise, test instance)? & Chooses JSON-2 or XML-RPC adapter; closes US-11.\\
+P2-D2 & Token lifetime, and whether to add refresh tokens. & Changes the login endpoint and the frontend client.\\
+P2-D3 & May a reviewer approve a document they uploaded themselves? & Adds a separation-of-duties check to approval.\\
+P2-D4 & Retention period and deletion procedure for documents. & Defines use of \texttt{deleted\_at} and a clean-up job.\\
+P2-D5 & Post vendor bills in the ERP, or leave them in draft? & Changes the final ERP call.\\
+P2-D6 & Final thresholds and tolerances. & Set only after the OCR baseline exists.\\
+\hline
+\end{longtable}}
+The open decisions D1 to D9 of the Phase 1 document still apply; in particular the document type scope (D3), the dataset (D6) and the training hardware (D7).
+
+\section{Risks specific to this phase}
+{\tblstart\small
+\begin{longtable}{L{4.4cm}L{4.4cm}L{5.0cm}}
+\hdrrow \hdr{Risk} & \hdr{Effect} & \hdr{Mitigation}\\ \endhead
+Odoo version differs from the assumption & ERP adapter must be rewritten. & Adapter interface; mock first; decide P2-D1 early.\\
+Models, migrations and \texttt{schema.sql} drift apart & Wrong schema in some environments. & Compare the migrated database with \texttt{schema.sql} in a test.\\
+API code drifts from the contract & React and backend disagree. & Compare the generated schema with \texttt{openapi.yaml}; contract tests.\\
+Schema tested only on MariaDB & A MySQL 8.0 difference appears late. & Run the file on MySQL 8.0 as the first Phase 3 task.\\
+Design too large for the time available & Late features missing. & Build in the order of Chapter~\ref{ch:p2trace}; line items and the admin screens can be reduced.\\
+\hline
+\end{longtable}}
+
+\section{Next steps}
+The next phase is the development environment and the working foundation (stories US-12 to US-16). The design above gives it this order of work.
+\begin{enumerate}
+\item Confirm that the Phase 1 backend runs on the developer's PC (health and database checks).
+\item Run \texttt{schema.sql} on MySQL 8.0 and fix any difference.
+\item Write the SQLAlchemy models and the first Alembic revision, including the checks and triggers; compare the migrated schema with \texttt{schema.sql}.
+\item Install and verify OpenCV and PyTorch, and set up the React and Vite application.
+\item Implement sign-in with roles, then upload with file validation, then the status endpoints, each with tests, keeping \texttt{openapi.yaml} in step.
+\end{enumerate}
+
+\appendix
+\chapter{Database Schema Listing}
+The complete file \texttt{schema.sql}, as it was loaded and tested.
+{\lstset{basicstyle=\ttfamily\tiny,language=SQL}
+\lstinputlisting{/home/claude/phase2/schema.sql}}

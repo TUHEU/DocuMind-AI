@@ -1,0 +1,668 @@
+openapi: 3.0.3
+info:
+  title: DocuMind AI API (Phase 2 contract)
+  version: 0.2.0-design
+  description: |
+    Design contract for the DocuMind AI backend. Only the two health endpoints exist in code today.
+    Everything else is a design to be implemented in later phases.
+    Roles: OPERATOR uploads and tracks documents, REVIEWER also reviews and approves, ADMIN also manages users and settings.
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+tags:
+  - name: Health
+  - name: Auth
+  - name: Documents
+  - name: Review
+  - name: ERP
+  - name: Admin
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      security: []
+      x-status: implemented
+      responses:
+        "200":
+          description: API process is running
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Health"}
+  /health/db:
+    get:
+      tags: [Health]
+      summary: Database readiness check
+      security: []
+      x-status: implemented
+      responses:
+        "200":
+          description: Database reachable
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Health"}
+        "503":
+          description: Database unreachable
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Health"}
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in and receive an access token
+      security: []
+      x-roles: [public]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/LoginRequest"}
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TokenResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "429": {$ref: "#/components/responses/TooManyRequests"}
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user profile
+      x-roles: [OPERATOR, REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/User"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+  /documents:
+    post:
+      tags: [Documents]
+      summary: Upload a document and create a processing job
+      x-roles: [OPERATOR, REVIEWER, ADMIN]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        "202":
+          description: Accepted; processing continues in the background
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DocumentSummary"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "413": {$ref: "#/components/responses/TooLarge"}
+        "415": {$ref: "#/components/responses/UnsupportedType"}
+    get:
+      tags: [Documents]
+      summary: List and filter documents
+      x-roles: [OPERATOR, REVIEWER, ADMIN]
+      parameters:
+        - {name: status, in: query, schema: {$ref: "#/components/schemas/DocumentStatus"}}
+        - {name: document_type, in: query, schema: {type: string, enum: [INVOICE, RECEIPT, FORM, UNKNOWN]}}
+        - {name: q, in: query, description: "Search by id, file name or invoice number", schema: {type: string, maxLength: 100}}
+        - {name: created_from, in: query, schema: {type: string, format: date}}
+        - {name: created_to, in: query, schema: {type: string, format: date}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        "200":
+          description: A page of documents
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DocumentPage"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+  /documents/{document_id}:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    get:
+      tags: [Documents]
+      summary: Document metadata, status and processing summary
+      x-roles: [OPERATOR, REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: The document
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DocumentDetail"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /documents/{document_id}/result:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    get:
+      tags: [Review]
+      summary: Extracted fields, line items and validation findings of the latest run
+      x-roles: [REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: Extraction result
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ExtractionResult"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /documents/{document_id}/file:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    get:
+      tags: [Documents]
+      summary: Download the original file after an authorisation check
+      x-roles: [REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: The original file
+          content:
+            application/pdf: {schema: {type: string, format: binary}}
+            image/png: {schema: {type: string, format: binary}}
+            image/jpeg: {schema: {type: string, format: binary}}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /documents/{document_id}/pages/{page_no}/image:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+      - {name: page_no, in: path, required: true, schema: {type: integer, minimum: 1}}
+    get:
+      tags: [Review]
+      summary: Rendered page image for the review screen
+      x-roles: [REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: Page image
+          content:
+            image/png: {schema: {type: string, format: binary}}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /documents/{document_id}/fields:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    patch:
+      tags: [Review]
+      summary: Save reviewer corrections (reason required, original value kept)
+      x-roles: [REVIEWER, ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CorrectionRequest"}
+      responses:
+        "200":
+          description: Updated result
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ExtractionResult"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /documents/{document_id}/approve:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    post:
+      tags: [Review]
+      summary: Approve the record (blocked while a BLOCKING finding is open)
+      x-roles: [REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: Document is now APPROVED
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DocumentDetail"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /documents/{document_id}/reject:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    post:
+      tags: [Review]
+      summary: Reject the record with a reason
+      x-roles: [REVIEWER, ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, minLength: 3, maxLength: 500}
+      responses:
+        "200":
+          description: Document is now REJECTED
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DocumentDetail"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /documents/{document_id}/reprocess:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    post:
+      tags: [Documents]
+      summary: Start a new processing run for a FAILED or REJECTED document
+      x-roles: [OPERATOR, REVIEWER, ADMIN]
+      responses:
+        "202":
+          description: Queued again; earlier runs are kept
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DocumentSummary"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /documents/{document_id}/submit:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    post:
+      tags: [ERP]
+      summary: Send an APPROVED record to the ERP adapter (idempotent)
+      x-roles: [REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: ERP accepted the record, or it was already sent
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErpAttempt"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "502":
+          description: ERP rejected the record or was unreachable; retry is safe
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErpAttempt"}
+  /documents/{document_id}/erp-attempts:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    get:
+      tags: [ERP]
+      summary: Integration history of one document
+      x-roles: [REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: Attempts, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/ErpAttempt"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /documents/{document_id}/audit:
+    parameters:
+      - {$ref: "#/components/parameters/DocumentId"}
+    get:
+      tags: [Documents]
+      summary: Audit trail of one document
+      x-roles: [REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: Events, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/AuditEvent"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /dashboard/summary:
+    get:
+      tags: [Documents]
+      summary: Counts by status, review queue size and recent failures
+      x-roles: [OPERATOR, REVIEWER, ADMIN]
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DashboardSummary"}
+  /exports/documents:
+    get:
+      tags: [ERP]
+      summary: Export approved records as JSON or CSV
+      x-roles: [REVIEWER, ADMIN]
+      parameters:
+        - {name: format, in: query, schema: {type: string, enum: [json, csv], default: json}}
+      responses:
+        "200":
+          description: Export file
+          content:
+            application/json: {schema: {type: array, items: {type: object}}}
+            text/csv: {schema: {type: string}}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /users:
+    get:
+      tags: [Admin]
+      summary: List users
+      x-roles: [ADMIN]
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/User"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      tags: [Admin]
+      summary: Create a user
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UserCreate"}
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/User"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /users/{user_id}:
+    parameters:
+      - {name: user_id, in: path, required: true, schema: {type: string, format: uuid}}
+    patch:
+      tags: [Admin]
+      summary: Change role or deactivate a user
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: {$ref: "#/components/schemas/Role"}
+                is_active: {type: boolean}
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/User"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /settings:
+    get:
+      tags: [Admin]
+      summary: Read thresholds and validation settings
+      x-roles: [ADMIN]
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/Setting"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /settings/{setting_key}:
+    parameters:
+      - {name: setting_key, in: path, required: true, schema: {type: string, maxLength: 60}}
+    put:
+      tags: [Admin]
+      summary: Change one setting (audited)
+      x-roles: [ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [setting_value]
+              properties:
+                setting_value: {type: string, maxLength: 255}
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Setting"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    DocumentId:
+      name: document_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    BadRequest:
+      description: Malformed request or validation failure
+      content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+    Unauthorized:
+      description: Missing, invalid or expired token
+      content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+    Forbidden:
+      description: The role is not allowed to do this
+      content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+    NotFound:
+      description: Missing or inaccessible resource
+      content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+    Conflict:
+      description: The action is not allowed in the current state
+      content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+    TooLarge:
+      description: File larger than the configured limit
+      content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+    UnsupportedType:
+      description: File type not accepted
+      content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+    TooManyRequests:
+      description: Too many attempts
+      content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: string, example: INVALID_STATE}
+            message: {type: string, example: Document must be APPROVED before submission}
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: {type: string}
+                  issue: {type: string}
+            request_id: {type: string}
+    Health:
+      type: object
+      properties:
+        status: {type: string, example: healthy}
+        database: {type: string, example: connected}
+    Role: {type: string, enum: [OPERATOR, REVIEWER, ADMIN]}
+    DocumentStatus:
+      type: string
+      enum: [UPLOADED, QUEUED, PROCESSING, NEEDS_REVIEW, APPROVED, REJECTED, ERP_SENT, ERP_FAILED, FAILED]
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string, minLength: 8, maxLength: 200}
+    TokenResponse:
+      type: object
+      properties:
+        access_token: {type: string}
+        token_type: {type: string, example: bearer}
+        expires_in: {type: integer, example: 1800}
+        user: {$ref: "#/components/schemas/User"}
+    User:
+      type: object
+      properties:
+        user_id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        full_name: {type: string}
+        role: {$ref: "#/components/schemas/Role"}
+        is_active: {type: boolean}
+    UserCreate:
+      type: object
+      required: [email, full_name, password, role]
+      properties:
+        email: {type: string, format: email}
+        full_name: {type: string}
+        password: {type: string, minLength: 8}
+        role: {$ref: "#/components/schemas/Role"}
+    DocumentSummary:
+      type: object
+      properties:
+        document_id: {type: string, format: uuid}
+        original_filename: {type: string}
+        status: {$ref: "#/components/schemas/DocumentStatus"}
+        created_at: {type: string, format: date-time}
+    DocumentDetail:
+      allOf:
+        - {$ref: "#/components/schemas/DocumentSummary"}
+        - type: object
+          properties:
+            mime_type: {type: string}
+            size_bytes: {type: integer}
+            page_count: {type: integer, nullable: true}
+            document_type: {type: string}
+            language: {type: string, nullable: true}
+            sha256: {type: string}
+            latest_run: {$ref: "#/components/schemas/RunSummary"}
+            updated_at: {type: string, format: date-time}
+    RunSummary:
+      type: object
+      nullable: true
+      properties:
+        run_id: {type: string, format: uuid}
+        run_number: {type: integer}
+        status: {type: string, enum: [RUNNING, SUCCEEDED, FAILED]}
+        ocr_engine: {type: string, enum: [TESSERACT, CRNN]}
+        error_category: {type: string, nullable: true}
+    DocumentPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/DocumentSummary"}
+        page: {type: integer}
+        page_size: {type: integer}
+        total: {type: integer}
+    ExtractedField:
+      type: object
+      properties:
+        name: {type: string, example: total_amount}
+        raw_value: {type: string, nullable: true}
+        value: {type: string, nullable: true, description: "Reviewed value if corrected, else normalised value"}
+        confidence: {type: number, minimum: 0, maximum: 1, nullable: true}
+        validation: {type: string, enum: [PASS, REVIEW, FAIL]}
+        message: {type: string, nullable: true}
+        page: {type: integer, nullable: true}
+        bbox:
+          type: object
+          nullable: true
+          properties:
+            x: {type: number}
+            y: {type: number}
+            w: {type: number}
+            h: {type: number}
+    LineItem:
+      type: object
+      properties:
+        line_no: {type: integer}
+        description: {type: string, nullable: true}
+        quantity: {type: number, nullable: true}
+        unit_price: {type: number, nullable: true}
+        amount: {type: number, nullable: true}
+        confidence: {type: number, nullable: true}
+    Finding:
+      type: object
+      properties:
+        rule_code: {type: string, example: ARITHMETIC}
+        severity: {type: string, enum: [INFO, WARNING, BLOCKING]}
+        message: {type: string}
+        field_names: {type: array, items: {type: string}}
+    ExtractionResult:
+      type: object
+      properties:
+        document_id: {type: string, format: uuid}
+        status: {$ref: "#/components/schemas/DocumentStatus"}
+        run_id: {type: string, format: uuid}
+        fields:
+          type: array
+          items: {$ref: "#/components/schemas/ExtractedField"}
+        line_items:
+          type: array
+          items: {$ref: "#/components/schemas/LineItem"}
+        findings:
+          type: array
+          items: {$ref: "#/components/schemas/Finding"}
+        review_required: {type: boolean}
+    CorrectionRequest:
+      type: object
+      required: [corrections]
+      properties:
+        corrections:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [name, new_value, reason]
+            properties:
+              name: {type: string}
+              new_value: {type: string, maxLength: 500}
+              reason: {type: string, minLength: 3, maxLength: 300}
+    ErpAttempt:
+      type: object
+      properties:
+        attempt_id: {type: string, format: uuid}
+        attempt_no: {type: integer}
+        destination: {type: string, enum: [MOCK, ODOO]}
+        status: {type: string, enum: [PENDING, SENT, FAILED]}
+        external_ref: {type: string, nullable: true}
+        error_category: {type: string, nullable: true}
+        message: {type: string, nullable: true}
+        created_at: {type: string, format: date-time}
+    AuditEvent:
+      type: object
+      properties:
+        event_id: {type: integer}
+        actor: {type: string, nullable: true}
+        action: {type: string}
+        before: {type: object, nullable: true}
+        after: {type: object, nullable: true}
+        created_at: {type: string, format: date-time}
+    DashboardSummary:
+      type: object
+      properties:
+        counts_by_status:
+          type: object
+          additionalProperties: {type: integer}
+        review_queue: {type: integer}
+        failed_last_24h: {type: integer}
+    Setting:
+      type: object
+      properties:
+        setting_key: {type: string}
+        setting_value: {type: string}
+        description: {type: string, nullable: true}
+        updated_at: {type: string, format: date-time}

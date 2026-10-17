@@ -1,0 +1,26 @@
+\begin{tikzpicture}[x=1cm,y=1cm,
+  ent/.style={uclass2,text width=3.7cm},
+  pk/.style={font=\bfseries},]
+\node[ent] (user) at (0,0) {\centerline{{\bfseries USER}}\nodepart{two}
+ \textbf{PK} user\_id\\ email \textit{(unique)}\\ password\_hash\\ role\\ is\_active\\ created\_at};
+\node[ent] (run) at (5.9,0) {\centerline{{\bfseries PROCESSING\_RUN}}\nodepart{two}
+ \textbf{PK} run\_id\\ \textit{FK} document\_id\\ model\_version\\ preproc\_config\\ status, error\_category\\ started\_at, ended\_at};
+\node[ent] (fld) at (11.8,0) {\centerline{{\bfseries EXTRACTED\_FIELD}}\nodepart{two}
+ \textbf{PK} field\_id\\ \textit{FK} run\_id\\ name, raw\_value, value\\ confidence\\ page, bbox\\ validation\_status};
+\node[ent] (doc) at (5.9,-5.0) {\centerline{{\bfseries DOCUMENT}}\nodepart{two}
+ \textbf{PK} document\_id\\ \textit{FK} uploaded\_by\\ storage\_key\\ sha256 \textit{(indexed)}\\ mime\_type, size\_bytes\\ status \textit{(indexed)}\\ created\_at};
+\node[ent] (rev) at (0,-5.0) {\centerline{{\bfseries REVIEW}}\nodepart{two}
+ \textbf{PK} review\_id\\ \textit{FK} document\_id\\ \textit{FK} reviewer\_id\\ decision\\ notes\\ decided\_at};
+\node[ent] (erp) at (11.8,-5.0) {\centerline{{\bfseries ERP\_ATTEMPT}}\nodepart{two}
+ \textbf{PK} attempt\_id\\ \textit{FK} document\_id\\ idempotency\_key \textit{(unique)}\\ destination, status\\ external\_ref\\ sanitized\_error, at};
+\node[ent] (aud) at (5.9,-10.1) {\centerline{{\bfseries AUDIT\_EVENT}}\nodepart{two}
+ \textbf{PK} event\_id\\ \textit{FK} actor\_id\\ \textit{FK} document\_id \textit{(nullable)}\\ action\\ before\_json, after\_json\\ at};
+\tikzset{er/.style={color=navy,line width=0.7pt}}
+\draw[er] (user.south) -- node[lbl,pos=0.12,right]{1} node[lbl,pos=0.88,right]{N} (user.south |- rev.north);
+\draw[er] (user.south east) -- node[lbl,pos=0.1,above right]{1} node[lbl,pos=0.9,above]{N} (doc.north west);
+\draw[er] (doc.north) -- node[lbl,pos=0.1,left]{1} node[lbl,pos=0.9,left]{N} (run.south);
+\draw[er] (run.east) -- node[lbl,pos=0.12,above]{1} node[lbl,pos=0.88,above]{N} (fld.west);
+\draw[er] (doc.west) -- node[lbl,pos=0.12,above]{1} node[lbl,pos=0.88,above]{N} (rev.east);
+\draw[er] (doc.east) -- node[lbl,pos=0.12,above]{1} node[lbl,pos=0.88,above]{N} (erp.west);
+\draw[er] (doc.south) -- node[lbl,pos=0.12,left]{1} node[lbl,pos=0.88,left]{N} (aud.north);
+\end{tikzpicture}

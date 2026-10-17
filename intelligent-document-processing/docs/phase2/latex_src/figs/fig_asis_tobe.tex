@@ -1,0 +1,13 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[font=\sffamily\bfseries\small,text=coral,anchor=west] at (0,5.6) {AS-IS: manual document handling};
+\foreach \i/\t in {0/Document arrives\\ (email or paper scan),1/Open or print\\ the document,2/Read and type\\ values by hand,3/Check by eye\\ (if time allows),4/Enter in ERP\\ screens,5/File the\\ document}{
+  \node[boxC,text width=2.1cm,minimum height=1.1cm] (a\i) at (1.25+2.65*\i,4.5) {\scriptsize\t};}
+\foreach \i/\j in {0/1,1/2,2/3,3/4,4/5}{\draw[arr] (a\i) -- (a\j);}
+\node[font=\sffamily\scriptsize,text=coral!80!black,text width=15cm,align=left,anchor=north west] at (0.1,3.7) {\textbf{Pain points:} slow and repetitive $\cdot$ transcription errors $\cdot$ no consistent audit trail $\cdot$ duplicates discovered late $\cdot$ documents hard to find again};
+\draw[teal!60,line width=1pt,dashed] (0,2.7) -- (16,2.7);
+\node[font=\sffamily\bfseries\small,text=tealdark,anchor=west] at (0,2.2) {TO-BE: \projname{} workflow};
+\foreach \i/\t in {0/Upload\\ document,1/Automatic\\ preprocessing\\ + OCR,2/Field extraction\\ + validation,3/Human review\\ of flagged items,4/Approve\\ record,5/Controlled\\ ERP submission}{
+  \node[boxT,text width=2.1cm,minimum height=1.1cm] (b\i) at (1.25+2.65*\i,0.9) {\scriptsize\t};}
+\foreach \i/\j in {0/1,1/2,2/3,3/4,4/5}{\draw[arr] (b\i) -- (b\j);}
+\node[font=\sffamily\scriptsize,text=tealdark,text width=15cm,align=left,anchor=north west] at (0.1,-0.1) {\textbf{Benefits to be measured:} less manual typing $\cdot$ errors caught by rules $\cdot$ every correction traceable $\cdot$ duplicate prevention $\cdot$ searchable archive};
+\end{tikzpicture}

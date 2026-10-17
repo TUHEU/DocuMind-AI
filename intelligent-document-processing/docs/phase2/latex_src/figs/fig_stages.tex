@@ -1,0 +1,13 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\def\w{3.9}
+\foreach \i/\c/\t/\p/\d in {%
+  {0/teal/Stage A/Phases 1--5/Foundation: requirements, design, setup, database and backend, secure upload},%
+  {1/amber/Stage B/Phases 6--10/Intelligence: preprocessing, baseline OCR, custom OCR, extraction, validation},%
+  {2/violet/Stage C/Phases 11--13/Application: human review, ERP integration, React web dashboard},%
+  {3/coral/Stage D/Phases 14--18/Delivery: testing, security, deployment, scaling, report and defence}}{
+  \pgfmathsetmacro{\x}{\i*(\w+0.15)}
+  \fill[\c!85!black] (\x,0) -- (\x+\w-0.35,0) -- (\x+\w,-0.7) -- (\x+\w-0.35,-1.4) -- (\x,-1.4) -- (\x+0.35,-0.7) -- cycle;
+  \node[text=white,font=\sffamily\bfseries\small,align=center] at (\x+\w/2,-0.45) {\t};
+  \node[text=white,font=\sffamily\scriptsize,align=center] at (\x+\w/2,-0.95) {\p};
+  \node[font=\sffamily\scriptsize,text width=3.5cm,align=center,anchor=north] at (\x+\w/2,-1.7) {\d};}
+\end{tikzpicture}

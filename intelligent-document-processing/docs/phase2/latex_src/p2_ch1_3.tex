@@ -1,0 +1,210 @@
+\input{p2_gen_counts}
+\chapter{Overview of Phase 2}\label{ch:p2overview}
+\section{Goal}
+Phase 2 answers one question: \emph{how will the frontend, backend, database, OCR engine and ERP integration work together?} The Phase 1 requirements said what the system must do. This phase decides how it is built, in enough detail that Phase 3 onward can implement it without guessing.
+
+\section{User stories covered}
+The six stories below come from the project Kanban board. Each one is closed by a chapter of this document and, where useful, by a file that a program can check.
+
+{\tblstart\small
+\begin{longtable}{L{1.4cm}L{5.2cm}L{1.6cm}L{5.6cm}}
+\hdrrow \hdr{Story} & \hdr{Title} & \hdr{Chapter} & \hdr{Main deliverable}\\ \endhead
+US-06 & Design the system architecture & \ref{ch:p2arch} & Layered architecture, technology decisions, module rules, deployment views.\\
+US-07 & Design the database & \ref{ch:p2db} & \texttt{schema.sql}: \nTables{} tables, \nColumns{} columns, keys, checks, indexes, audit trigger.\\
+US-08 & Design the document-processing workflow & \ref{ch:p2flow} & Stage table, state machine, validation and retry rules.\\
+US-09 & Design the REST API & \ref{ch:p2api} & \texttt{openapi.yaml}: \nOps{} operations, \nSchemas{} schemas, error model.\\
+US-10 & Design the user interface & \ref{ch:p2ui} & Screen map, wireframes, state table.\\
+US-11 & Define security and ERP integration & \ref{ch:p2sec} & Threat and control table, ERP adapter design, mapping and retry policy.\\
+\hline
+\end{longtable}}
+
+\section{Main design decisions at a glance}
+{\tblstart\small
+\begin{longtable}{L{3.6cm}L{4.6cm}L{5.6cm}}
+\hdrrow \hdr{Topic} & \hdr{Decision} & \hdr{Reason}\\ \endhead
+Backend shape & One FastAPI application with separated modules. & Fewer moving parts for a single developer; services can be extracted later.\\
+Database & MySQL 8 with SQLAlchemy 2 and Alembic migrations. & Project requirement; migrations make schema changes repeatable.\\
+Processing & Asynchronous: the upload returns \texttt{202} at once. & OCR is slow; the user must not wait on a request.\\
+OCR & Behind an \texttt{OcrEngine} interface with two implementations: Tesseract and the custom CRNN model. & Fair comparison and a working fallback.\\
+ERP & Behind an \texttt{ErpAdapter} interface with a mock and an Odoo implementation. & The mock lets the project run without Odoo access.\\
+Review & Mandatory before any ERP submission. & Business rule BR-1.\\
+Identity & Short-lived bearer token; role checked in the backend on every request. & The browser is never trusted to enforce permissions.\\
+History & Every run, correction and ERP attempt is kept. & Business rules BR-5 and BR-6; auditing.\\
+\hline
+\end{longtable}}
+
+\section{What was checked}\label{sec:p2verified}
+\begin{statusbox}[Verification status]
+\textbf{Checked.} \texttt{schema.sql} was loaded into a real database engine (MariaDB 10.11, which is MySQL-compatible) and nine invalid inserts were rejected as designed (Section~\ref{sec:p2dbtests}). \texttt{openapi.yaml} passes an OpenAPI 3.0 validator. The document statuses in the API and in the database are identical. The column dictionary and endpoint catalogue in this document are \emph{generated} from those two files.\\[3pt]
+\textbf{Not checked.} The schema has not been run on MySQL 8.0 itself. No endpoint other than \texttt{/health} and \texttt{/health/db} exists in code. The screens are wireframes, not a running interface. Nothing has been tried against Odoo. Timing, confidence thresholds and retry values are planning values, not measurements.
+\end{statusbox}
+
+% =====================================================================
+\chapter{System Architecture}\label{ch:p2arch}
+\emph{Story US-06.} The chapter fixes the frontend, backend and database technologies, shows the OCR pipeline and the ERP integration in one diagram, and states the rules that keep the modules separate.
+
+\section{Scope and context}
+\projname{} sits between people who hold invoices and the ERP that must record them. Three kinds of people use it (operator, reviewer, administrator). One external system receives data from it (the ERP). Everything else, including OCR, runs inside the system boundary.
+
+\section{Layered architecture}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_arch}}
+\caption{Layered architecture. The React interface calls versioned routers; routers call domain services; services use protected storage, MySQL and, at the bottom, the ERP. The job queue is introduced after the synchronous version works.}\label{fig:p2arch}
+\end{figure}
+
+\subsection{Technology decisions (acceptance criteria of US-06)}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{4.1cm}L{6.7cm}}
+\hdrrow \hdr{Layer} & \hdr{Choice} & \hdr{Role in the system}\\ \endhead
+Web frontend & React with Vite (Node.js toolchain) & Single-page application: sign-in, upload, lists, review workspace, administration.\\
+Backend API & FastAPI on Uvicorn & Routing, validation (Pydantic), authentication, orchestration of services.\\
+Database & MySQL 8 (InnoDB, utf8mb4) & All structured data: users, documents, runs, fields, reviews, ERP attempts, audit.\\
+Data access & SQLAlchemy 2 with PyMySQL; Alembic for migrations & Mapped models and versioned schema changes.\\
+Image and PDF handling & OpenCV; PyMuPDF & Render PDF pages, deskew, denoise, binarise.\\
+OCR & Tesseract (baseline) and a PyTorch CRNN with CTC (custom) & Text recognition behind one interface.\\
+Storage & A private directory first; private object storage later & Original files and page images, never served directly.\\
+ERP & Mock service first; Odoo through its external API & Receives approved records.\\
+Packaging & Docker and Docker Compose; Kubernetes later & Reproducible setup; local run without Docker stays supported.\\
+\hline
+\end{longtable}}
+
+\section{Module rules}
+The backend is one deployable application. To keep it maintainable the following rules apply.
+\begin{enumerate}
+\item \textbf{Direction of calls.} Router $\rightarrow$ service $\rightarrow$ repository or adapter. A router never touches the database or the file system directly, and a repository never calls a service.
+\item \textbf{Interfaces at the edges.} OCR and ERP are used through interfaces (\texttt{OcrEngine}, \texttt{ErpAdapter}). A new engine or ERP is a new class, not a change to the callers.
+\item \textbf{Schemas are not models.} Pydantic schemas describe the API; SQLAlchemy models describe tables. They are kept separate so a table change does not silently change the API.
+\item \textbf{One place for state changes.} Document status changes happen in one service function that checks the allowed transitions (Chapter~\ref{ch:p2flow}) and writes the audit event in the same transaction.
+\end{enumerate}
+
+\subsection{Planned backend layout}
+The folders \texttt{api}, \texttt{core} and \texttt{database} already exist. The others are added as their features are built.
+\begin{lstlisting}
+backend/app/
+  main.py            # application and middleware (exists)
+  api/               # routers: health (exists), auth, documents, review, erp, admin
+  core/              # settings (exists), security, logging
+  database/          # engine and session (exists), migrations
+  models/            # SQLAlchemy models, one file per table group
+  schemas/           # Pydantic request and response schemas
+  services/          # document, workflow, validation, review, audit
+  ocr/               # OcrEngine interface, tesseract engine, crnn engine, preprocessing
+  erp/               # ErpAdapter interface, mock adapter, odoo adapter
+  workers/           # background processing of queued documents
+\end{lstlisting}
+
+\section{OCR pipeline and ERP integration in one view}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_pipeline}}
+\caption{Processing pipeline from upload to ERP submission, with the human review step before the ERP.}\label{fig:p2pipeline}
+\end{figure}
+
+\section{Deployment views}
+Three ways to run the system are supported, in this order of introduction.
+{\tblstart\small
+\begin{longtable}{L{3.2cm}L{5.0cm}L{5.6cm}}
+\hdrrow \hdr{Mode} & \hdr{What runs where} & \hdr{Used for}\\ \endhead
+Local, no Docker & Backend with Uvicorn in a virtual environment; MySQL installed on the PC; React dev server. & Daily development and debugging.\\
+Docker Compose & Containers for the backend and MySQL; later a worker and a message broker. & Reproducible demo and clean-machine test (O10).\\
+Kubernetes & Deployments for the API and workers; managed or stateful MySQL; secrets and config maps. & Later stage, only if time allows.\\
+\hline
+\end{longtable}}
+\begin{figure}[H]\centering
+\resizebox{0.95\textwidth}{!}{\input{figs/fig_deploy_compose}}
+\caption{Docker Compose deployment (written, not yet run on the developer's machine).}\label{fig:p2compose}
+\end{figure}
+
+\section{Architecture decision records}
+{\tblstart\small
+\begin{longtable}{L{0.9cm}L{3.3cm}L{4.0cm}L{5.6cm}}
+\hdrrow \hdr{ID} & \hdr{Decision} & \hdr{Alternative rejected} & \hdr{Consequence}\\ \endhead
+A1 & Modular monolith & Microservices from the start & One process to debug; boundaries must be kept by discipline.\\
+A2 & Asynchronous processing & Process during the upload request & Needs job state and a worker; the user sees status instead of waiting.\\
+A3 & Files outside the database & Store files as BLOBs & Smaller database; storage and database must be backed up together.\\
+A4 & UUID identifiers & Auto-increment integers & Identifiers do not reveal volume; slightly larger keys.\\
+A5 & Alembic migrations & SQLAlchemy \texttt{create\_all} & Extra setup; every schema change is recorded and reversible.\\
+A6 & Mock ERP before Odoo & Wait for Odoo access & Work is not blocked; the adapter must be re-tested against the real ERP.\\
+A7 & Roles checked in the backend & Hide buttons in the UI only & Every router needs a role check; UI hiding is only cosmetic.\\
+A8 & Keep every processing run & Overwrite results on reprocess & More rows; history satisfies FR-21 and BR-5.\\
+\hline
+\end{longtable}}
+
+% =====================================================================
+\chapter{Database Design}\label{ch:p2db}
+\emph{Story US-07.} The chapter identifies the entities, defines tables for documents, extracted fields and review decisions, fixes keys and relationships, and covers processing status and audit history.
+
+\section{Principles}
+MySQL stores structured data, not the uploaded files. Each document row holds an opaque storage key, the SHA-256 hash and file metadata. Status values, roles and decisions are restricted by \texttt{CHECK} constraints so that invalid values cannot enter even if the application has a bug. Times are stored in UTC. Nothing that must be remembered for audit is ever updated in place: runs, corrections and ERP attempts are new rows.
+
+\section{Entity-relationship diagram}
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_er_p2}}
+\caption{Entity-relationship diagram of the \nTables{} tables. Lines show the main one-to-many relationships; the table in Section~\ref{sec:p2fk} lists every foreign key.}\label{fig:p2er}
+\end{figure}
+
+\section{Purpose of each table}
+{\tblstart\small
+\begin{longtable}{L{3.6cm}L{10.2cm}}
+\hdrrow \hdr{Table} & \hdr{Purpose}\\ \endhead
+\texttt{users} & Identity, role (OPERATOR, REVIEWER, ADMIN), active flag and login-failure counter. Only a password hash is stored.\\
+\texttt{documents} & One uploaded file: storage key, SHA-256, type, size, pages, language and current workflow status.\\
+\texttt{processing\_runs} & One processing attempt of a document, with engine, model version, preprocessing settings, status and sanitised error. Reprocessing adds a run.\\
+\texttt{extracted\_fields} & The header fields of one run (supplier, invoice number, dates, subtotal, tax, total, currency), with raw value, normalised value, reviewed value, confidence, page, bounding box and validation status.\\
+\texttt{extracted\_line\_items} & Invoice table rows of one run.\\
+\texttt{validation\_findings} & Document-level rule results such as arithmetic mismatch, duplicate or missing field, with a severity (INFO, WARNING, BLOCKING).\\
+\texttt{reviews} & The human decision (APPROVED or REJECTED) with reviewer, run, reason and time.\\
+\texttt{field\_corrections} & Each manual change to a field: old value, new value, reason, user and time (rule BR-5).\\
+\texttt{erp\_attempts} & Each submission to the ERP: attempt number, idempotency key, destination, status, ERP reference and sanitised error (rules BR-4 and BR-6).\\
+\texttt{audit\_events} & Append-only record of who did what and when, with before and after values.\\
+\texttt{system\_settings} & Administrator-editable thresholds and limits, so a change needs no redeployment (FR-17).\\
+\hline
+\end{longtable}}
+
+\section{Column dictionary}
+The table below is generated from the database that was created from \texttt{schema.sql}. Types are shown as MySQL reports them; the four \texttt{json} columns are plain JSON text in MariaDB, which was used for the check.
+\input{p2_gen_dict}
+
+\section{Keys, constraints and indexes}\label{sec:p2fk}
+{\tblstart\small
+\begin{longtable}{L{4.4cm}L{4.4cm}L{5.0cm}}
+\hdrrow \hdr{Constraint} & \hdr{Where} & \hdr{What it protects}\\ \endhead
+Primary key (UUID) & Every table except \texttt{audit\_events} and \texttt{system\_settings}. & Stable identity; \texttt{audit\_events} uses an increasing number to keep order.\\
+Unique & \texttt{users.email}; \texttt{documents.storage\_key}; (\texttt{document\_id}, \texttt{run\_number}); (\texttt{run\_id}, \texttt{field\_name}); (\texttt{run\_id}, \texttt{line\_no}); (\texttt{document\_id}, \texttt{attempt\_no}). & No duplicate accounts, no two runs with the same number, one value per field per run.\\
+Foreign keys & \texttt{documents.uploaded\_by}; \texttt{processing\_runs.document\_id}; \texttt{extracted\_fields.run\_id}; \texttt{extracted\_line\_items.run\_id}; \texttt{validation\_findings.run\_id}; \texttt{reviews.document\_id, run\_id, reviewer\_id}; \texttt{field\_corrections.field\_id, corrected\_by}; \texttt{erp\_attempts.document\_id}; \texttt{audit\_events.actor\_id, document\_id}; \texttt{system\_settings.updated\_by}. & No row can refer to something that does not exist.\\
+Check & Role, document status, document type, run status, OCR engine, validation status, severity, review decision, ERP destination and status, confidence between 0 and 1, size above 0. & Invalid values are refused by the database itself.\\
+Index & \texttt{documents} by status and date, by hash, and by uploader and date; \texttt{erp\_attempts} by idempotency key and by status; \texttt{audit\_events} by document, by actor and by action. & Review queue, duplicate-file lookup, dashboard counts and audit searches stay fast.\\
+\hline
+\end{longtable}}
+\begin{infobox}[Duplicate invoices and double ERP submission]
+A duplicate \emph{invoice} (same supplier, number, date and amount) is a business rule that produces a finding, because extracted values can be wrong or incomplete; it is not a unique constraint. A duplicate ERP \emph{submission} is prevented by the idempotency key and by a service-layer check inside one transaction that locks the document row. The retry tests required by objective O9 must prove this.
+\end{infobox}
+
+\section{Audit design}
+Audit rows are inserted by the same transaction that makes the change. Two database triggers reject \texttt{UPDATE} and \texttt{DELETE} on \texttt{audit\_events}, so the trail is append-only even if application code is wrong. In deployment the application account should also lack the right to drop or alter the triggers. Actions recorded: login, upload, status change, field correction, approval, rejection, ERP submission and setting change.
+
+\section{Status and history}
+The \texttt{documents.status} column holds the nine states of Figure~\ref{fig:p2state} (Chapter~\ref{ch:p2flow}). Processing history lives in \texttt{processing\_runs}; a reprocess adds a run with the next \texttt{run\_number} and keeps all earlier runs and their fields. The latest run is the one with the highest number.
+
+\section{Verification performed}\label{sec:p2dbtests}
+\texttt{schema.sql} was loaded into an empty database on MariaDB 10.11, which accepted all \nTables{} tables and the starting settings. Sample rows were inserted, then nine invalid operations were tried. Each one was refused.
+{\tblstart\small
+\begin{longtable}{L{0.8cm}L{7.0cm}L{6.0cm}}
+\hdrrow \hdr{No.} & \hdr{Invalid operation tried} & \hdr{Result}\\ \endhead
+1 & Second user with an existing e-mail & Refused: unique key.\\
+2 & User with role \texttt{BOSS} & Refused: role check.\\
+3 & Document with status \texttt{DONE} & Refused: status check.\\
+4 & Document uploaded by a user that does not exist & Refused: foreign key.\\
+5 & Two \texttt{total\_amount} fields in the same run & Refused: unique key.\\
+6 & Confidence of 1.5 & Refused: range check.\\
+7 & Two runs with number 1 for the same document & Refused: unique key.\\
+8 & \texttt{UPDATE} of an audit event & Refused by trigger.\\
+9 & \texttt{DELETE} of an audit event & Refused by trigger; the row was still there afterwards.\\
+\hline
+\end{longtable}}
+These tests show the schema does what it was designed to do on one engine. They are not a substitute for running the same file on MySQL 8.0 and then running the migrations from Phase 3.
+
+\section{From design to migrations}
+Phase 3 turns this file into SQLAlchemy models and one initial Alembic revision. Three points need care: the \texttt{CHECK} constraints and the two triggers are not generated automatically from models and must be added with explicit SQL in the revision; the \texttt{JSON} columns must map to the JSON type; and the model and the revision must be compared with the live schema after the first run so they cannot drift apart.
+
+\section{Retention and privacy}
+Invoices can contain personal and financial data. The \texttt{deleted\_at} column supports removal of a document from normal use, and a retention period must be chosen before real data is used (open decision, Section~\ref{sec:p2open}). Demonstrations use synthetic or authorised documents only. Error messages stored in the database are sanitised and never contain file paths or stack traces.

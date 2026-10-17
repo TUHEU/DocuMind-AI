@@ -1,0 +1,27 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\foreach \x/\n/\c in {0.9/Reviewer/mist, 3.7/React UI/mint, 6.5/FastAPI/mint, 9.3/Review +\\audit/sand, 12.1/ERP\\adapter/sand, 14.9/ERP\\(Odoo or mock)/blush}{
+  \node[box,fill=\c,minimum width=2.3cm,text width=2.1cm,minimum height=0.9cm] at (\x,0) {\textbf{\n}};
+  \draw[lifeline] (\x,-0.45) -- (\x,-13.6);
+  \fill[navy!15] (\x-0.08,-1.2) rectangle (\x+0.08,-13.0);}
+\draw[msg] (0.9,-1.4) -- node[lbl,above]{edit field + reason} (3.7,-1.4);
+\draw[msg] (3.7,-2.1) -- node[lbl,above]{PATCH /documents/\{id\}/fields} (6.5,-2.1);
+\draw[msg] (6.5,-2.8) -- node[lbl,above]{validate role, save correction} (9.3,-2.8);
+\draw[msg] (9.3,-3.5) .. controls (11,-3.5) and (11,-4.0) .. node[lbl,right,pos=0.5]{AuditEvent: before / after} (9.38,-4.0);
+\draw[msg] (0.9,-4.9) -- node[lbl,above]{click Approve} (3.7,-4.9);
+\draw[msg] (3.7,-5.6) -- node[lbl,above]{POST .../approve} (6.5,-5.6);
+\draw[msg] (6.5,-6.3) -- node[lbl,above]{status = APPROVED} (9.3,-6.3);
+\draw[msg] (3.7,-7.2) -- node[lbl,above]{POST .../submit} (6.5,-7.2);
+\draw[msg] (6.5,-7.9) -- node[lbl,above]{submit(document\_id)} (12.1,-7.9);
+\draw[msg] (12.1,-8.6) .. controls (13.2,-8.6) and (13.2,-9.1) .. node[lbl,right,pos=0.5]{build payload, key} (12.18,-9.1);
+\draw[msg] (12.1,-9.8) -- node[lbl,above]{POST invoice + idempotency key} (14.9,-9.8);
+% alt frame
+\draw[amber!80!black,line width=0.8pt] (11.2,-10.3) rectangle (15.9,-12.8);
+\fill[amber!80!black] (11.2,-10.3) rectangle (11.9,-10.65);
+\node[text=white,font=\sffamily\bfseries\tiny] at (11.55,-10.47) {alt};
+\draw[ret] (14.9,-11.0) -- node[lbl,above]{ok: external\_ref} (12.1,-11.0);
+\node[font=\sffamily\tiny,text=slate,fill=white,inner sep=1pt] at (13.5,-11.42) {[success] status = ERP\_SENT};
+\draw[dashed,amber!80!black] (11.2,-11.65) -- (15.9,-11.65);
+\draw[ret] (14.9,-12.2) -- node[lbl,above]{error} (12.1,-12.2);
+\node[font=\sffamily\tiny,text=slate,fill=white,inner sep=1pt] at (13.5,-12.58) {[failure] ERP\_FAILED, retry later};
+\draw[ret] (12.1,-13.0) -- node[lbl,above]{result} (3.7,-13.0);
+\end{tikzpicture}

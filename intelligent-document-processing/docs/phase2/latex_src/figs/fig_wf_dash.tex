@@ -1,0 +1,24 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\draw[rounded corners=4pt,fill=white,draw=navy,line width=1pt] (0,0) rectangle (16,9.6);
+\fill[navy] (0,8.8) rectangle (16,9.6); \node[text=white,font=\sffamily\bfseries\small,anchor=west] at (0.3,9.2) {\projname{} -- Dashboard};
+\node[text=white,font=\sffamily\scriptsize,anchor=east] at (15.7,9.2) {Dashboard $\cdot$ Upload $\cdot$ Documents $\cdot$ Admin $\cdot$ Sign out};
+\foreach \x/\n/\v/\c in {0.4/Uploaded today/12/navy, 4.3/Needs review/5/amber, 8.2/Approved/31/leaf, 12.1/Failed (24 h)/2/coral}{
+  \draw[rounded corners=3pt,fill=mist,draw=\c,line width=1pt] (\x,6.6) rectangle (\x+3.5,8.4);
+  \node[font=\sffamily\tiny,text=slate,anchor=west] at (\x+0.2,8.05) {\n};
+  \node[font=\sffamily\bfseries\Large,text=\c!80!black,anchor=west] at (\x+0.2,7.2) {\v};}
+\node[font=\sffamily\scriptsize\bfseries,text=navy,anchor=west] at (0.4,6.15) {Review queue (oldest first)};
+\draw[draw=slate,fill=white] (0.4,2.2) rectangle (15.6,5.9);
+\fill[navy!10] (0.4,5.3) rectangle (15.6,5.9);
+\foreach \x/\t in {0.6/Document, 5.2/Uploaded, 8.4/Status, 11.4/Findings, 13.8/Action}{\node[font=\sffamily\tiny\bfseries,anchor=west,text=navy] at (\x,5.6) {\t};}
+\foreach \y/\a/\b/\c/\d in {4.9/INV-2026-001.pdf/30 Sep 09:12/2 warnings/leaf, 4.3/scan\_0457.png/30 Sep 09:40/1 blocking/coral, 3.7/facture\_acme.pdf/30 Sep 10:05/none/leaf, 3.1/INV-2026-004.pdf/30 Sep 10:31/1 warning/leaf}{
+  \node[font=\sffamily\tiny,anchor=west] at (0.6,\y) {\a};
+  \node[font=\sffamily\tiny,anchor=west] at (5.2,\y) {\b};
+  \draw[rounded corners=2pt,fill=sand,draw=amber!80!black] (8.4,\y-0.16) rectangle (10.6,\y+0.16); \node[font=\sffamily\tiny\bfseries] at (9.5,\y) {NEEDS\_REVIEW};
+  \node[font=\sffamily\tiny,anchor=west,text=\d!70!black] at (11.4,\y) {\c};
+  \node[font=\sffamily\tiny,anchor=west,text=teal] at (13.8,\y) {Open review};
+  \draw[slate!25] (0.4,\y-0.3) -- (15.6,\y-0.3);}
+\node[font=\sffamily\tiny,text=slate,anchor=west] at (0.6,2.5) {Showing 4 of 5 $\cdot$ page 1 of 2};
+\node[font=\sffamily\scriptsize\bfseries,text=navy,anchor=west] at (0.4,1.7) {Recent activity};
+\node[font=\sffamily\tiny,text=slate,anchor=west] at (0.4,1.2) {10:31 INV-2026-004.pdf processed $\cdot$ 10:05 facture\_acme.pdf processed $\cdot$ 09:58 reviewer approved INV-2025-210};
+\node[font=\sffamily\tiny,text=slate,anchor=west] at (0.4,0.6) {All values on this wireframe are synthetic examples.};
+\end{tikzpicture}

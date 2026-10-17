@@ -1,0 +1,27 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[boxN,minimum width=2.6cm] (login) at (0,0) {Sign in};
+\node[boxT,minimum width=2.8cm] (dash) at (4.0,0) {Dashboard};
+\node[boxT,minimum width=2.8cm] (up) at (8.6,3.0) {Upload};
+\node[boxT,minimum width=2.8cm] (list) at (8.6,0) {Document list};
+\node[boxA,minimum width=3.2cm] (rev) at (13.4,1.5) {Review workspace\\[-2pt]\scriptsize fields $\cdot$ source $\cdot$ approve};
+\node[boxA,minimum width=3.2cm] (hist) at (13.4,-1.5) {Integration history\\[-2pt]\scriptsize attempts $\cdot$ ERP reference};
+\node[boxV,minimum width=2.8cm] (adm) at (8.6,-3.2) {Administration};
+\node[boxV,minimum width=2.6cm] (usr) at (4.6,-5.2) {Users and roles};
+\node[boxV,minimum width=3.0cm] (set) at (8.6,-5.2) {Rules and thresholds};
+\node[boxV,minimum width=2.6cm] (aud) at (12.6,-5.2) {Audit view};
+\draw[arr] (login) -- (dash);
+\draw[arr] (dash.east) -- ++(0.5,0) |- (up.west);
+\draw[arr] (dash) -- (list);
+\draw[arr] (dash.south) -- ++(0,-1.2) |- (adm.west);
+\draw[arr] (list.east) -- ++(0.5,0) |- (rev.west);
+\draw[arr] (list.east) -- ++(0.5,0) |- (hist.west);
+\draw[arr] (up.south) -- (list.north);
+\draw[arr] (adm.south) -- ++(0,-0.5) -| (usr.north);
+\draw[arr] (adm.south) -- (set.north);
+\draw[arr] (adm.south) -- ++(0,-0.5) -| (aud.north);
+% legend
+\node[boxN,minimum width=0.5cm,minimum height=0.35cm,anchor=west] at (0,-3.4) {}; \node[font=\sffamily\scriptsize,anchor=west] at (0.7,-3.4) {everyone};
+\node[boxT,minimum width=0.5cm,minimum height=0.35cm,anchor=west] at (0,-4.0) {}; \node[font=\sffamily\scriptsize,anchor=west] at (0.7,-4.0) {operator, reviewer, admin};
+\node[boxA,minimum width=0.5cm,minimum height=0.35cm,anchor=west] at (0,-4.6) {}; \node[font=\sffamily\scriptsize,anchor=west] at (0.7,-4.6) {reviewer, admin};
+\node[boxV,minimum width=0.5cm,minimum height=0.35cm,anchor=west] at (0,-5.2) {}; \node[font=\sffamily\scriptsize,anchor=west] at (0.7,-5.2) {admin only};
+\end{tikzpicture}

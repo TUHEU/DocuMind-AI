@@ -1,0 +1,24 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\def\ys{-0.9}
+\foreach \x/\n/\c in {0.9/Operator/mist, 3.7/React UI/mint, 6.5/FastAPI/mint, 9.3/Document\\service/sand, 12.1/Worker\\(OCR)/sand, 14.9/MySQL/lilac}{
+  \node[box,fill=\c,minimum width=2.3cm,text width=2.1cm,minimum height=0.9cm] (p\x) at (\x,0) {\textbf{\n}};
+  \draw[lifeline] (\x,-0.45) -- (\x,-12.8);
+  \fill[navy!15] (\x-0.08,-1.2) rectangle (\x+0.08,-12.2);}
+% messages (y descending)
+\draw[msg] (0.9,-1.4) -- node[lbl,above]{select file} (3.7,-1.4);
+\draw[msg] (3.7,-2.2) -- node[lbl,above]{POST /api/v1/documents (JWT)} (6.5,-2.2);
+\draw[msg] (6.5,-3.0) .. controls (7.6,-3.0) and (7.6,-3.5) .. node[lbl,right,pos=0.5]{authenticate, authorize} (6.58,-3.5);
+\draw[msg] (6.5,-4.3) -- node[lbl,above]{validate + store} (9.3,-4.3);
+\draw[msg] (9.3,-5.1) -- node[lbl,above]{INSERT document, job = QUEUED} (14.9,-5.1);
+\draw[ret] (9.3,-5.9) -- node[lbl,above]{document\_id} (6.5,-5.9);
+\draw[ret] (6.5,-6.5) -- node[lbl,above]{202 Accepted \{document\_id\}} (3.7,-6.5);
+\draw[msg] (9.3,-7.3) -- node[lbl,above]{enqueue / start job} (12.1,-7.3);
+\draw[msg] (12.1,-8.1) .. controls (13.2,-8.1) and (13.2,-8.9) .. node[lbl,right,pos=0.5]{preprocess, OCR, extract, validate} (12.18,-8.9);
+\draw[msg] (12.1,-9.7) -- node[lbl,above]{save fields, status = NEEDS\_REVIEW} (14.9,-9.7);
+\draw[msg] (3.7,-10.5) -- node[lbl,above]{GET /documents/\{id\} (poll)} (6.5,-10.5);
+\draw[msg] (6.5,-11.1) .. controls (10.7,-11.1) and (13.2,-11.1) .. node[lbl,above,pos=0.5]{SELECT status, fields} (14.9,-11.1);
+\draw[ret] (6.5,-11.7) -- node[lbl,above]{status + fields} (3.7,-11.7);
+\draw[ret] (3.7,-12.2) -- node[lbl,above]{show result} (0.9,-12.2);
+% async note
+\node[draw=amber!80!black,fill=sand,font=\sffamily\scriptsize,align=left,inner sep=3pt] at (7.2,-8.5) {OCR runs asynchronously:\\ the upload request\\ returns before OCR ends.};
+\end{tikzpicture}

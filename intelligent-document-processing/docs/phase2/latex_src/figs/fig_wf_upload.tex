@@ -1,0 +1,15 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\draw[rounded corners=4pt,fill=white,draw=navy,line width=1pt] (0,0) rectangle (16,8.6);
+\fill[navy] (0,7.8) rectangle (16,8.6); \node[text=white,font=\sffamily\bfseries\small,anchor=west] at (0.3,8.2) {\projname{} -- Upload documents};
+\draw[dashed,teal,line width=1.2pt,rounded corners=6pt,fill=mint!60] (0.6,4.4) rectangle (15.4,7.2);
+\node[font=\sffamily\bfseries\small,text=navy] at (8,6.4) {Drag and drop invoices here, or};
+\draw[rounded corners=3pt,fill=teal,draw=none] (6.6,5.2) rectangle (9.4,5.9); \node[text=white,font=\sffamily\bfseries\scriptsize] at (8,5.55) {Choose files};
+\node[font=\sffamily\tiny,text=slate] at (8,4.7) {PDF, PNG or JPEG $\cdot$ up to 10 MB each $\cdot$ up to 10 pages per PDF};
+\node[font=\sffamily\scriptsize\bfseries,text=navy,anchor=west] at (0.6,3.9) {Selected files};
+\foreach \y/\n/\s/\p/\c in {3.2/INV-2026-001.pdf/Uploaded -- DOC ID shown/1.0/leaf, 2.4/scan\_0457.png/Uploading 64\%/0.64/teal, 1.6/notes.docx/Refused: file type not accepted (415)/0.0/coral}{
+  \node[font=\sffamily\tiny,anchor=west] at (0.8,\y) {\n};
+  \draw[slate!40,fill=white] (5.2,\y-0.1) rectangle (11.2,\y+0.1);
+  \ifdim \p pt>0pt \fill[\c] (5.2,\y-0.1) rectangle ({5.2+6*\p},\y+0.1); \fi
+  \node[font=\sffamily\tiny,anchor=west,text=\c!70!black] at (11.5,\y) {\s};}
+\node[font=\sffamily\tiny,text=slate,anchor=west] at (0.6,0.7) {A refused file shows the reason and how to fix it. Uploading the same file twice shows a duplicate warning.};
+\end{tikzpicture}

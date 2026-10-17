@@ -1,0 +1,34 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\draw[fill=white,draw=slate,line width=0.8pt] (0,0) rectangle (8.2,10.6);
+\node[font=\sffamily\bfseries\small,anchor=west] at (0.4,10.0) {ACME Cameroun SARL};
+\node[font=\sffamily\tiny,text=slate,anchor=west] at (0.4,9.6) {BP 1234, Yaound\'e $\cdot$ Tax ID: M012345678901A};
+\node[font=\sffamily\bfseries\small,text=navy,anchor=east] at (7.8,8.95) {FACTURE / INVOICE};
+\draw[slate!40] (0.4,9.3) -- (7.8,9.3);
+\node[font=\sffamily\scriptsize,anchor=west] at (0.4,8.3) {Bill to:};
+\node[font=\sffamily\scriptsize,anchor=west] at (0.4,7.85) {Client SA, Douala};
+\node[font=\sffamily\scriptsize,anchor=west] at (4.4,8.3) {Invoice No.: \textbf{INV-2026-001}};
+\node[font=\sffamily\scriptsize,anchor=west] at (4.4,7.85) {Date: \textbf{2026-09-30}};
+\node[font=\sffamily\scriptsize,anchor=west] at (4.4,7.4) {Due date: \textbf{2026-10-30}};
+\node[font=\sffamily\scriptsize,anchor=west] at (4.4,6.95) {PO ref.: \textbf{PO-4471}};
+\fill[navy] (0.4,5.9) rectangle (7.8,6.3);
+\node[text=white,font=\sffamily\tiny\bfseries,anchor=west] at (0.5,6.1) {Description};
+\node[text=white,font=\sffamily\tiny\bfseries] at (4.9,6.1) {Qty};
+\node[text=white,font=\sffamily\tiny\bfseries] at (6.0,6.1) {Unit};
+\node[text=white,font=\sffamily\tiny\bfseries,anchor=east] at (7.7,6.1) {Amount};
+\foreach \y/\d/\q/\u/\a in {5.6/Office paper A4/10/2 500/25 000, 5.1/Printer toner/2/30 000/60 000, 4.6/Delivery/1/20 042/20 042}{
+  \node[font=\sffamily\tiny,anchor=west] at (0.5,\y) {\d}; \node[font=\sffamily\tiny] at (4.9,\y) {\q}; \node[font=\sffamily\tiny] at (6.0,\y) {\u}; \node[font=\sffamily\tiny,anchor=east] at (7.7,\y) {\a};
+  \draw[slate!25] (0.4,\y-0.25) -- (7.8,\y-0.25);}
+\node[font=\sffamily\scriptsize,anchor=east] at (6.2,3.7) {Subtotal};  \node[font=\sffamily\scriptsize,anchor=east] at (7.7,3.7) {105 042};
+\node[font=\sffamily\scriptsize,anchor=east] at (6.2,3.2) {VAT 19.25\%}; \node[font=\sffamily\scriptsize,anchor=east] at (7.7,3.2) {20 223};
+\draw[navy,line width=0.8pt] (4.2,2.85) -- (7.8,2.85);
+\node[font=\sffamily\small\bfseries,anchor=east] at (6.2,2.45) {Total}; \node[font=\sffamily\small\bfseries,anchor=east] at (7.7,2.45) {125 265};
+\node[font=\sffamily\tiny,text=slate,anchor=west] at (0.4,1.2) {Currency: XAF $\cdot$ Payment by bank transfer};
+\node[font=\sffamily\tiny,text=slate,anchor=west] at (0.4,0.7) {(synthetic example for illustration)};
+% callouts: number / start x,y / label y
+\foreach \n/\x/\y/\ty in {1/3.85/10.0/10.0, 2/5.05/9.6/9.2, 3/7.15/8.3/8.4, 4/6.45/7.85/7.6, 5/6.65/7.4/6.8, 6/6.15/6.95/6.0, 7/7.8/5.1/5.2, 8/7.8/3.7/4.4, 9/7.8/3.2/3.6, 10/7.8/2.45/2.8, 11/5.5/1.2/1.0}{
+  \draw[coral,line width=0.6pt] (\x,\y) -- (8.85,\ty);
+  \fill[coral] (\x,\y) circle (0.05);
+  \node[circle,fill=coral,text=white,font=\sffamily\bfseries\tiny,inner sep=1.2pt] at (8.95,\ty) {\n};}
+\foreach \n/\t/\ty in {1/Supplier name/10.0, 2/Supplier tax ID/9.2, 3/Invoice number/8.4, 4/Invoice date/7.6, 5/Due date/6.8, 6/PO reference/6.0, 7/Line items (optional)/5.2, 8/Subtotal/4.4, 9/Tax amount/3.6, 10/Total amount/2.8, 11/Currency/1.0}{
+  \node[font=\sffamily\scriptsize,anchor=west,text=navy] at (9.25,\ty) {\t};}
+\end{tikzpicture}

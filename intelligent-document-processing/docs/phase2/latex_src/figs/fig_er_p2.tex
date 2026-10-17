@@ -1,0 +1,41 @@
+\begin{tikzpicture}[x=1cm,y=1cm,
+  ent/.style={uclass2,text width=3.45cm},
+  ]
+% row 0 (top)
+\node[ent] (set) at (0,5.3) {\centerline{{\bfseries SYSTEM\_SETTINGS}}\nodepart{two}
+ \textbf{PK} setting\_key\\ setting\_value\\ description\\ \textit{FK} updated\_by\\ updated\_at};
+\node[ent] (erp) at (4.7,5.3) {\centerline{{\bfseries ERP\_ATTEMPT}}\nodepart{two}
+ \textbf{PK} attempt\_id\\ \textit{FK} document\_id\\ attempt\_no\\ idempotency\_key\\ destination, status\\ external\_ref, error\_*};
+\node[ent] (itm) at (9.4,5.3) {\centerline{{\bfseries EXTRACTED\_LINE\_ITEM}}\nodepart{two}
+ \textbf{PK} item\_id\\ \textit{FK} run\_id\\ line\_no\\ description\\ quantity, unit\_price\\ amount, confidence};
+% row 1
+\node[ent] (usr) at (0,0) {\centerline{{\bfseries USER}}\nodepart{two}
+ \textbf{PK} user\_id\\ email \textit{(unique)}\\ password\_hash\\ role\\ is\_active\\ failed\_login\_count};
+\node[ent] (doc) at (4.7,0) {\centerline{{\bfseries DOCUMENT}}\nodepart{two}
+ \textbf{PK} document\_id\\ \textit{FK} uploaded\_by\\ storage\_key\\ sha256\\ mime\_type, size\_bytes\\ status, document\_type};
+\node[ent] (run) at (9.4,0) {\centerline{{\bfseries PROCESSING\_RUN}}\nodepart{two}
+ \textbf{PK} run\_id\\ \textit{FK} document\_id\\ run\_number\\ ocr\_engine\\ model\_version\\ status, error\_category};
+\node[ent] (fld) at (14.1,0) {\centerline{{\bfseries EXTRACTED\_FIELD}}\nodepart{two}
+ \textbf{PK} field\_id\\ \textit{FK} run\_id\\ field\_name\\ raw\_value, value\\ confidence, bbox\\ validation\_status};
+% row 2
+\node[ent] (rev) at (0,-5.3) {\centerline{{\bfseries REVIEW}}\nodepart{two}
+ \textbf{PK} review\_id\\ \textit{FK} document\_id\\ \textit{FK} run\_id\\ \textit{FK} reviewer\_id\\ decision, reason\\ decided\_at};
+\node[ent] (aud) at (4.7,-5.3) {\centerline{{\bfseries AUDIT\_EVENT}}\nodepart{two}
+ \textbf{PK} event\_id\\ \textit{FK} actor\_id\\ \textit{FK} document\_id\\ action\\ before\_json, after\_json\\ created\_at};
+\node[ent] (fnd) at (9.4,-5.3) {\centerline{{\bfseries VALIDATION\_FINDING}}\nodepart{two}
+ \textbf{PK} finding\_id\\ \textit{FK} run\_id\\ rule\_code\\ severity\\ field\_names\\ message};
+\node[ent] (cor) at (14.1,-5.3) {\centerline{{\bfseries FIELD\_CORRECTION}}\nodepart{two}
+ \textbf{PK} correction\_id\\ \textit{FK} field\_id\\ old\_value, new\_value\\ reason\\ \textit{FK} corrected\_by\\ corrected\_at};
+\tikzset{er/.style={color=navy,line width=0.7pt}}
+\draw[er] (usr.east) -- node[lbl,pos=0.15,above]{1} node[lbl,pos=0.85,above]{N} (doc.west);
+\draw[er] (doc.east) -- node[lbl,pos=0.15,above]{1} node[lbl,pos=0.85,above]{N} (run.west);
+\draw[er] (run.east) -- node[lbl,pos=0.15,above]{1} node[lbl,pos=0.85,above]{N} (fld.west);
+\draw[er] (usr.north) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (set.south);
+\draw[er] (doc.north) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (erp.south);
+\draw[er] (run.north) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (itm.south);
+\draw[er] (run.south) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (fnd.north);
+\draw[er] (fld.south) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (cor.north);
+\draw[er] (doc.south) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (aud.north);
+\draw[er] (usr.south) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (rev.north);
+\draw[er] (doc.south west) -- node[lbl,pos=0.85,above]{N} (rev.north east);
+\end{tikzpicture}

@@ -1,0 +1,29 @@
+{\tblstart\footnotesize
+\begin{longtable}{L{1.3cm}L{5.0cm}L{1.6cm}L{4.4cm}L{1.9cm}}
+\hdrrow \hdr{Method} & \hdr{Path (after \texttt{/api/v1})} & \hdr{Roles} & \hdr{Purpose} & \hdr{Status codes}\\ \endhead
+GET & \texttt{/\allowbreak health} & public & Liveness check \emph{(exists)} & 200\\
+GET & \texttt{/\allowbreak health/\allowbreak db} & public & Database readiness check \emph{(exists)} & 200, 503\\
+POST & \texttt{/\allowbreak auth/\allowbreak login} & public & Sign in and receive an access token & 200, 401, 429\\
+GET & \texttt{/\allowbreak auth/\allowbreak me} & Op, Rev, Adm & Current user profile & 200, 401\\
+POST & \texttt{/\allowbreak documents} & Op, Rev, Adm & Upload a document and create a processing job & 202, 400, 401, 413, 415\\
+GET & \texttt{/\allowbreak documents} & Op, Rev, Adm & List and filter documents & 200, 401\\
+GET & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}} & Op, Rev, Adm & Document metadata, status and processing summary & 200, 401, 404\\
+GET & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak result} & Rev, Adm & Extracted fields, line items and validation findings of the latest run & 200, 403, 404, 409\\
+GET & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak file} & Rev, Adm & Download the original file after an authorisation check & 200, 403, 404\\
+GET & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak pages/\allowbreak \{page\_no\}/\allowbreak image} & Rev, Adm & Rendered page image for the review screen & 200, 403, 404\\
+PATCH & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak fields} & Rev, Adm & Save reviewer corrections (reason required, original value kept) & 200, 400, 403, 404, 409\\
+POST & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak approve} & Rev, Adm & Approve the record (blocked while a BLOCKING finding is open) & 200, 403, 404, 409\\
+POST & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak reject} & Rev, Adm & Reject the record with a reason & 200, 400, 403, 409\\
+POST & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak reprocess} & Op, Rev, Adm & Start a new processing run for a FAILED or REJECTED document & 202, 403, 409\\
+POST & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak submit} & Rev, Adm & Send an APPROVED record to the ERP adapter (idempotent) & 200, 403, 409, 502\\
+GET & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak erp-attempts} & Rev, Adm & Integration history of one document & 200, 403, 404\\
+GET & \texttt{/\allowbreak documents/\allowbreak \{document\_id\}/\allowbreak audit} & Rev, Adm & Audit trail of one document & 200, 403, 404\\
+GET & \texttt{/\allowbreak dashboard/\allowbreak summary} & Op, Rev, Adm & Counts by status, review queue size and recent failures & 200\\
+GET & \texttt{/\allowbreak exports/\allowbreak documents} & Rev, Adm & Export approved records as JSON or CSV & 200, 403\\
+GET & \texttt{/\allowbreak users} & Adm & List users & 200, 403\\
+POST & \texttt{/\allowbreak users} & Adm & Create a user & 201, 400, 403, 409\\
+PATCH & \texttt{/\allowbreak users/\allowbreak \{user\_id\}} & Adm & Change role or deactivate a user & 200, 403, 404\\
+GET & \texttt{/\allowbreak settings} & Adm & Read thresholds and validation settings & 200, 403\\
+PUT & \texttt{/\allowbreak settings/\allowbreak \{setting\_key\}} & Adm & Change one setting (audited) & 200, 400, 403, 404\\
+\hline
+\end{longtable}}

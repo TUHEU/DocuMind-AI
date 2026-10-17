@@ -1,0 +1,122 @@
+{\tblstart\footnotesize
+\begin{longtable}{L{4.2cm}L{3.4cm}L{1.1cm}L{5.0cm}}
+\hdrrow \hdr{Column} & \hdr{Type} & \hdr{Null} & \hdr{Key}\\ \endhead
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{users}}}\\
+\texttt{user\_id} & char(36) & no & PK\\
+\texttt{email} & varchar(255) & no & UNIQUE\\
+\texttt{full\_name} & varchar(150) & no & \\
+\texttt{password\_hash} & varchar(255) & no & \\
+\texttt{role} & varchar(20) & no & \\
+\texttt{is\_active} & tinyint(1) & no & \\
+\texttt{failed\_login\_count} & int & no & \\
+\texttt{locked\_until} & datetime & yes & \\
+\texttt{last\_login\_at} & datetime & yes & \\
+\texttt{created\_at} & datetime & no & \\
+\texttt{updated\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{documents}}}\\
+\texttt{document\_id} & char(36) & no & PK\\
+\texttt{uploaded\_by} & char(36) & no & FK $\rightarrow$ users\\
+\texttt{original\_filename} & varchar(255) & no & \\
+\texttt{storage\_key} & varchar(255) & no & UNIQUE\\
+\texttt{sha256} & char(64) & no & \\
+\texttt{mime\_type} & varchar(100) & no & \\
+\texttt{size\_bytes} & bigint & no & \\
+\texttt{page\_count} & int & yes & \\
+\texttt{document\_type} & varchar(20) & no & \\
+\texttt{language} & varchar(10) & yes & \\
+\texttt{status} & varchar(20) & no & \\
+\texttt{retry\_count} & int & no & \\
+\texttt{created\_at} & datetime & no & \\
+\texttt{updated\_at} & datetime & no & \\
+\texttt{deleted\_at} & datetime & yes & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{processing\_runs}}}\\
+\texttt{run\_id} & char(36) & no & PK\\
+\texttt{document\_id} & char(36) & no & FK $\rightarrow$ documents\\
+\texttt{run\_number} & int & no & \\
+\texttt{status} & varchar(20) & no & \\
+\texttt{ocr\_engine} & varchar(20) & no & \\
+\texttt{model\_version} & varchar(60) & yes & \\
+\texttt{preproc\_config} & json & yes & \\
+\texttt{error\_category} & varchar(40) & yes & \\
+\texttt{error\_message} & varchar(500) & yes & \\
+\texttt{started\_at} & datetime & no & \\
+\texttt{ended\_at} & datetime & yes & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{extracted\_fields}}}\\
+\texttt{field\_id} & char(36) & no & PK\\
+\texttt{run\_id} & char(36) & no & FK $\rightarrow$ processing\_runs\\
+\texttt{field\_name} & varchar(40) & no & \\
+\texttt{raw\_value} & varchar(1000) & yes & \\
+\texttt{normalized\_value} & varchar(500) & yes & \\
+\texttt{reviewed\_value} & varchar(500) & yes & \\
+\texttt{confidence} & decimal(4,3) & yes & \\
+\texttt{page\_no} & int & yes & \\
+\texttt{bbox} & json & yes & \\
+\texttt{validation\_status} & varchar(10) & no & \\
+\texttt{validation\_message} & varchar(300) & yes & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{extracted\_line\_items}}}\\
+\texttt{item\_id} & char(36) & no & PK\\
+\texttt{run\_id} & char(36) & no & FK $\rightarrow$ processing\_runs\\
+\texttt{line\_no} & int & no & \\
+\texttt{description} & varchar(500) & yes & \\
+\texttt{quantity} & decimal(18,4) & yes & \\
+\texttt{unit\_price} & decimal(18,4) & yes & \\
+\texttt{amount} & decimal(18,2) & yes & \\
+\texttt{confidence} & decimal(4,3) & yes & \\
+\texttt{page\_no} & int & yes & \\
+\texttt{bbox} & json & yes & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{validation\_findings}}}\\
+\texttt{finding\_id} & char(36) & no & PK\\
+\texttt{run\_id} & char(36) & no & FK $\rightarrow$ processing\_runs\\
+\texttt{rule\_code} & varchar(40) & no & \\
+\texttt{severity} & varchar(10) & no & \\
+\texttt{field\_names} & varchar(200) & yes & \\
+\texttt{message} & varchar(500) & no & \\
+\texttt{created\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{reviews}}}\\
+\texttt{review\_id} & char(36) & no & PK\\
+\texttt{document\_id} & char(36) & no & FK $\rightarrow$ documents\\
+\texttt{run\_id} & char(36) & no & FK $\rightarrow$ processing\_runs\\
+\texttt{reviewer\_id} & char(36) & no & FK $\rightarrow$ users\\
+\texttt{decision} & varchar(10) & no & \\
+\texttt{reason} & varchar(500) & yes & \\
+\texttt{decided\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{field\_corrections}}}\\
+\texttt{correction\_id} & char(36) & no & PK\\
+\texttt{field\_id} & char(36) & no & FK $\rightarrow$ extracted\_fields\\
+\texttt{old\_value} & varchar(500) & yes & \\
+\texttt{new\_value} & varchar(500) & yes & \\
+\texttt{reason} & varchar(300) & no & \\
+\texttt{corrected\_by} & char(36) & no & FK $\rightarrow$ users\\
+\texttt{corrected\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{erp\_attempts}}}\\
+\texttt{attempt\_id} & char(36) & no & PK\\
+\texttt{document\_id} & char(36) & no & FK $\rightarrow$ documents\\
+\texttt{attempt\_no} & int & no & \\
+\texttt{idempotency\_key} & varchar(80) & no & \\
+\texttt{destination} & varchar(20) & no & \\
+\texttt{status} & varchar(10) & no & \\
+\texttt{http\_status} & int & yes & \\
+\texttt{external\_ref} & varchar(100) & yes & \\
+\texttt{error\_category} & varchar(40) & yes & \\
+\texttt{error\_message} & varchar(500) & yes & \\
+\texttt{created\_at} & datetime & no & \\
+\texttt{finished\_at} & datetime & yes & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{audit\_events}}}\\
+\texttt{event\_id} & bigint & no & PK\\
+\texttt{actor\_id} & char(36) & yes & FK $\rightarrow$ users\\
+\texttt{document\_id} & char(36) & yes & FK $\rightarrow$ documents\\
+\texttt{action} & varchar(50) & no & \\
+\texttt{entity\_type} & varchar(30) & yes & \\
+\texttt{entity\_id} & varchar(36) & yes & \\
+\texttt{before\_json} & json & yes & \\
+\texttt{after\_json} & json & yes & \\
+\texttt{ip\_address} & varchar(45) & yes & \\
+\texttt{created\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{system\_settings}}}\\
+\texttt{setting\_key} & varchar(60) & no & PK\\
+\texttt{setting\_value} & varchar(255) & no & \\
+\texttt{description} & varchar(255) & yes & \\
+\texttt{updated\_by} & char(36) & yes & FK $\rightarrow$ users\\
+\texttt{updated\_at} & datetime & no & \\
+\hline
+\end{longtable}}

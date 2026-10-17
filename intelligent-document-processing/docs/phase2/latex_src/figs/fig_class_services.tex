@@ -1,0 +1,23 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[uclass2] (pipe) at (3.7,0) {\cname{ProcessingPipeline}\nodepart{two}
+ +run(document\_id)\\ -preprocess(pages)\\ -recognize(image) : OcrResult\\ -extract(text) : Fields\\ -validate(fields) : Findings};
+\node[uclass2] (integ) at (12.3,0) {\cname{IntegrationService}\nodepart{two}
+ +submit(document\_id)\\ -build\_payload(record)\\ -idempotency\_key(record)\\ +retry(attempt\_id)};
+\node[uiface] (ocr) at (3.7,-3.9) {\cname{\stereo{interface}\ OcrEngine}\nodepart{two}
+ +recognize(image) : OcrResult\\ +name : str\\ +version : str};
+\node[uiface] (erpa) at (12.3,-3.9) {\cname{\stereo{interface}\ ErpAdapter}\nodepart{two}
+ +submit(payload) : ErpResult\\ +get\_status(ref) : Status};
+\node[uclass2,text width=3.0cm] (tess) at (1.7,-7.4) {\cname{TesseractEngine}\nodepart{two}
+ baseline OCR\\ (comparison)};
+\node[uclass2,text width=3.0cm] (crnn) at (5.7,-7.4) {\cname{CrnnEngine}\nodepart{two}
+ PyTorch CRNN + CTC\\ model\_version};
+\node[uclass2,text width=3.0cm] (mock) at (10.5,-7.4) {\cname{MockErpAdapter}\nodepart{two}
+ local test endpoint\\ simulates success/failure};
+\node[uclass2,text width=3.0cm] (odoo) at (14.4,-7.4) {\cname{OdooAdapter}\nodepart{two}
+ maps fields to Odoo\\ vendor bill (verified later)};
+\draw[arrd] (pipe.south) -- node[lbl,right]{uses} (ocr.north);
+\draw[arrd] (integ.south) -- node[lbl,right]{uses} (erpa.north);
+\foreach \c/\i in {tess/ocr,crnn/ocr,mock/erpa,odoo/erpa}{
+  \draw[color=slate,dashed,line width=0.7pt,-{Triangle[open,length=3.2mm,width=3mm]}] (\c.north) -- ++(0,0.6) -| (\i.south);}
+\node[font=\sffamily\scriptsize,text=slate,text width=6.2cm,align=center] at (8.0,-9.4) {Dashed arrows with open heads show \emph{realization}: concrete engines and adapters implement the same interface, so either can be swapped without changing the pipeline.};
+\end{tikzpicture}

@@ -1,0 +1,212 @@
+\chapter{Document-Processing Workflow}\label{ch:p2flow}
+\emph{Story US-08.} The chapter defines upload and file validation, preprocessing and OCR, extraction and confidence scoring, human review of uncertain results, and the path of an approved document to the ERP.
+
+\section{Lifecycle}
+Every document is in exactly one state. The backend refuses any change that is not an arrow in Figure~\ref{fig:p2state}; for example an unreviewed document can never jump to \texttt{ERP\_SENT}.
+\begin{figure}[H]\centering
+\resizebox{0.95\textwidth}{!}{\input{figs/fig_state}}
+\caption{Document lifecycle. The filled dot is the start; double circles are end states that can still be left only by an explicit retry or reprocess action.}\label{fig:p2state}
+\end{figure}
+
+\begin{figure}[H]\centering
+\resizebox{0.95\textwidth}{!}{\input{figs/fig_activity}}
+\caption{Activity view of the whole flow, including the review decision and the ERP result.}\label{fig:p2activity}
+\end{figure}
+
+\section{Stage by stage}
+{\tblstart\footnotesize
+\begin{longtable}{L{2.3cm}L{4.3cm}L{3.3cm}L{1.9cm}L{2.2cm}}
+\hdrrow \hdr{Stage} & \hdr{What happens} & \hdr{Writes} & \hdr{Status after} & \hdr{On failure}\\ \endhead
+1. Receive and validate & Check type, content, size, pages and integrity (Section~\ref{sec:p2upload}). & Nothing yet if refused. & --- & Refuse with 400, 413 or 415.\\
+2. Store & Save the original in protected storage under an opaque key; compute SHA-256. & \texttt{documents} row; audit event UPLOAD. & UPLOADED & Delete the partial file; return 500.\\
+3. Queue & Mark ready for the worker; return \texttt{202} with the document ID. & Status. & QUEUED & Stays QUEUED; the worker picks it up later.\\
+4. Preprocess & Render PDF pages to images; deskew, denoise, normalise contrast; segment lines. & \texttt{processing\_runs} row; page images in storage. & PROCESSING & Category UNREADABLE or TIMEOUT.\\
+5. Recognise & Run the selected OCR engine; keep text, line boxes and confidence. & Run engine and model version. & PROCESSING & Category OCR\_ERROR.\\
+6. Extract & Map recognised text to the invoice fields and line items; keep page and box. & \texttt{extracted\_fields}, \texttt{extracted\_line\_items}. & PROCESSING & Fields left empty and flagged, not invented.\\
+7. Validate & Apply the rules of Section~\ref{sec:p2rules}; compute findings and a validation status per field. & \texttt{validation\_findings}. & PROCESSING & Rule error is logged; record still goes to review.\\
+8. Route & Always send to human review in the prototype. & Run status SUCCEEDED. & NEEDS\_REVIEW & Unrecoverable error: FAILED.\\
+9. Review & Reviewer corrects fields with a reason, then approves or rejects. & \texttt{field\_corrections}, \texttt{reviews}, audit. & APPROVED or REJECTED & ---\\
+10. Submit & Build the ERP payload; send with the idempotency key; record the result. & \texttt{erp\_attempts}, audit. & ERP\_SENT or ERP\_FAILED & Retry is safe (Chapter~\ref{ch:p2sec}).\\
+\hline
+\end{longtable}}
+
+\section{File validation at upload}\label{sec:p2upload}
+{\tblstart\small
+\begin{longtable}{L{3.2cm}L{6.6cm}L{4.0cm}}
+\hdrrow \hdr{Check} & \hdr{Rule} & \hdr{Response}\\ \endhead
+Empty file & Size must be above zero. & 400 \texttt{VALIDATION\_ERROR}\\
+File type & Extension is \texttt{.pdf}, \texttt{.png}, \texttt{.jpg} or \texttt{.jpeg}, and the first bytes of the content match PDF, PNG or JPEG. The client-supplied MIME type is not trusted on its own. & 415 \texttt{UNSUPPORTED\_MEDIA\_TYPE}\\
+Size & At most \texttt{max\_upload\_bytes} (10 MB at the start). & 413 \texttt{FILE\_TOO\_LARGE}\\
+Pages & PDF has at most \texttt{max\_pdf\_pages} pages (10 at the start). & 400 \texttt{VALIDATION\_ERROR}\\
+Integrity & The file opens with the PDF or image library. & 400 \texttt{VALIDATION\_ERROR}\\
+Duplicate file & Same SHA-256 as an earlier document: accepted, then reported as an information finding so a person decides. & 202 with a warning\\
+\hline
+\end{longtable}}
+
+\section{Validation rules}\label{sec:p2rules}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{6.2cm}L{1.8cm}L{2.8cm}}
+\hdrrow \hdr{Rule code} & \hdr{Check} & \hdr{Severity} & \hdr{Setting}\\ \endhead
+REQUIRED\_FIELD & Supplier, invoice number, invoice date, subtotal, tax, total and currency are present and parse. & BLOCKING & ---\\
+DATE & Dates parse; due date is not before invoice date; date is in a plausible range. & WARNING & ---\\
+ARITHMETIC & Subtotal plus tax equals total within the tolerance. Never corrected automatically. & WARNING & \texttt{arithmetic\_\allowbreak tolerance}\\
+CURRENCY & Currency code or symbol is known and consistent across fields. & WARNING & ---\\
+DUPLICATE & Same supplier, invoice number, date and amount as an earlier approved or sent document. & WARNING & ---\\
+ERP\_SCHEMA & The approved values satisfy the ERP payload schema. & BLOCKING & ---\\
+\hline
+\end{longtable}}
+A BLOCKING finding prevents approval until the reviewer corrects the cause. A WARNING does not block, but the approval event stores which warnings were open, so the audit trail shows the reviewer saw them.
+
+\section{Confidence and review routing}
+Confidence is a signal for the reviewer, not proof of correctness. The two thresholds live in \texttt{system\_settings} and the starting values (0.90 and 0.70) are \textbf{provisional}. They must be chosen on validation data after the OCR baseline exists, never on the test set.
+{\tblstart\small
+\begin{longtable}{L{5.2cm}L{4.4cm}L{4.2cm}}
+\hdrrow \hdr{Condition on a field} & \hdr{Shown to the reviewer as} & \hdr{Reviewer action}\\ \endhead
+Confidence at or above \texttt{confidence\_accept} and no failed rule & Accepted (green, with a text label). & May confirm without changes.\\
+Between \texttt{confidence\_review} and \texttt{confidence\_accept} & Highlighted (amber, REVIEW). & Should check against the source.\\
+Below \texttt{confidence\_review}, or a failed rule & Needs attention (red, REVIEW or FAIL). & Must confirm or correct before approval.\\
+\hline
+\end{longtable}}
+In the prototype every document goes to review, whatever the confidence (rule BR-1). A later version could skip review for very high confidence, but only after measured error rates justify it.
+
+\section{Failure and retry}
+{\tblstart\small
+\begin{longtable}{L{3.0cm}L{4.4cm}L{6.4cm}}
+\hdrrow \hdr{Error category} & \hdr{Kind} & \hdr{Behaviour (values provisional)}\\ \endhead
+UNREADABLE & Permanent & Run FAILED, document FAILED. A person uploads a better file or requests reprocessing.\\
+OCR\_ERROR & Possibly temporary & Up to two automatic retries, then FAILED.\\
+TIMEOUT & Temporary & Up to two automatic retries with a longer limit, then FAILED.\\
+STORAGE\_ERROR & Temporary & Retry; if it keeps failing, FAILED and an alert in the log.\\
+INTERNAL & Unknown & FAILED; details only in the server log, not in the response.\\
+\hline
+\end{longtable}}
+\texttt{documents.retry\_count} records automatic retries. A manual reprocess from FAILED or REJECTED creates a new run and returns the document to QUEUED; the earlier runs stay.
+
+\section{Upload sequence}
+\begin{figure}[H]\centering
+\resizebox{0.95\textwidth}{!}{\input{figs/fig_seq_upload}}
+\caption{Upload and asynchronous processing. The user receives an identifier immediately and follows the status.}\label{fig:p2sequpload}
+\end{figure}
+
+% =====================================================================
+\chapter{REST API Design}\label{ch:p2api}
+\emph{Story US-09.} The chapter defines endpoints for uploading and retrieving documents, for extracted fields and review decisions, the response formats and error handling, and the authentication and authorisation rules. The complete contract is the file \texttt{openapi.yaml}.
+
+\section{Conventions}
+\begin{itemize}
+\item Base path \texttt{/api/v1}; JSON bodies; \texttt{multipart/form-data} for uploads.
+\item Names in \texttt{snake\_case}; identifiers are UUID strings; times are ISO 8601 in UTC.
+\item Lists are paged with \texttt{page} (from 1) and \texttt{page\_size} (default 20, at most 100) and return \texttt{items}, \texttt{page}, \texttt{page\_size} and \texttt{total}.
+\item Clients must ignore unknown response fields, so fields can be added without a new version. A breaking change would become \texttt{/api/v2}.
+\item Every response carries a request identifier that also appears in the server log.
+\end{itemize}
+
+\section{Authentication and authorisation}
+A user signs in with e-mail and password at \texttt{POST /auth/login} and receives a short-lived bearer token (the contract example uses 1800 seconds, a provisional value). Every other endpoint, except the two health checks, requires the token. The backend looks up the user and role on each request and refuses with \texttt{401} (no or invalid token) or \texttt{403} (role not allowed). Repeated failed logins lock the account for a short time and the login endpoint returns \texttt{429} when rate-limited.
+
+{\tblstart\small
+\begin{longtable}{L{6.2cm}C{1.8cm}C{1.8cm}C{1.8cm}}
+\hdrrow \hdr{Function} & \hdr{Operator} & \hdr{Reviewer} & \hdr{Admin}\\ \endhead
+Sign in, read own profile & yes & yes & yes\\
+Upload; list and view own documents & yes & yes & yes\\
+List and view \emph{all} documents; dashboard of all documents & --- & yes & yes\\
+Request reprocessing & own & yes & yes\\
+Read extracted fields; view source file and page images & --- & yes & yes\\
+Correct fields; approve; reject & --- & yes & yes\\
+Submit to ERP; view integration history; export & --- & yes & yes\\
+View a document's audit trail & --- & yes & yes\\
+Manage users; change settings & --- & --- & yes\\
+\hline
+\end{longtable}}
+A document that a user may not see is reported as \texttt{404}, not \texttt{403}, so the API does not confirm that it exists.
+
+\section{Endpoint catalogue}
+The table is generated from \texttt{openapi.yaml}. \emph{Roles} abbreviates Operator (Op), Reviewer (Rev) and Administrator (Adm).
+\input{p2_gen_api}
+
+\section{Examples}
+\subsection{Sign in}
+\begin{lstlisting}[language=Python,morekeywords={true,false,null}]
+POST /api/v1/auth/login
+{ "email": "reviewer@example.org", "password": "********" }
+
+200 OK
+{ "access_token": "<jwt>", "token_type": "bearer", "expires_in": 1800,
+  "user": { "user_id": "7c1f...", "email": "reviewer@example.org",
+            "full_name": "A. Reviewer", "role": "REVIEWER", "is_active": true } }
+\end{lstlisting}
+
+\subsection{Upload}
+\begin{lstlisting}[language=Python,morekeywords={true,false,null}]
+POST /api/v1/documents          (multipart, field "file")
+
+202 Accepted
+{ "document_id": "b3a9...", "original_filename": "INV-2026-001.pdf",
+  "status": "QUEUED", "created_at": "2026-10-16T08:12:03Z" }
+\end{lstlisting}
+
+\subsection{Extraction result}
+\begin{lstlisting}[language=Python,morekeywords={true,false,null}]
+GET /api/v1/documents/b3a9.../result
+
+200 OK
+{ "document_id": "b3a9...", "status": "NEEDS_REVIEW", "run_id": "55d0...",
+  "review_required": true,
+  "fields": [
+    { "name": "invoice_number", "raw_value": "INV-2026-001", "value": "INV-2026-001",
+      "confidence": 0.91, "validation": "PASS", "message": null, "page": 1,
+      "bbox": { "x": 0.61, "y": 0.08, "w": 0.22, "h": 0.03 } },
+    { "name": "total_amount", "raw_value": "125 000", "value": "125000.00",
+      "confidence": 0.68, "validation": "REVIEW",
+      "message": "Subtotal + tax does not equal total", "page": 1, "bbox": null } ],
+  "line_items": [],
+  "findings": [
+    { "rule_code": "ARITHMETIC", "severity": "WARNING",
+      "message": "Subtotal + tax differs from total by 3.00",
+      "field_names": ["subtotal", "tax_amount", "total_amount"] } ] }
+\end{lstlisting}
+The values are synthetic examples that show the format; they are not output of an implemented endpoint.
+
+\subsection{Correction}
+\begin{lstlisting}[language=Python,morekeywords={true,false,null}]
+PATCH /api/v1/documents/b3a9.../fields
+{ "corrections": [
+    { "name": "total_amount", "new_value": "125003.00",
+      "reason": "Digit misread; total printed as 125 003" } ] }
+\end{lstlisting}
+The service stores the old value, the new value, the reason, the user and the time in \texttt{field\_corrections}, updates \texttt{reviewed\_value}, re-runs the validation rules for the document and returns the new result.
+
+\section{Error model}
+Every error has the same shape, so the frontend needs one error handler.
+\begin{lstlisting}[language=Python,morekeywords={true,false,null}]
+409 Conflict
+{ "error": { "code": "INVALID_STATE",
+             "message": "Document must be APPROVED before submission",
+             "details": [], "request_id": "req_9f2c" } }
+\end{lstlisting}
+{\tblstart\small
+\begin{longtable}{L{1.3cm}L{4.4cm}L{8.1cm}}
+\hdrrow \hdr{HTTP} & \hdr{\texttt{error.code}} & \hdr{When}\\ \endhead
+400 & VALIDATION\_ERROR & Malformed body, missing field, bad value, corrupt file, too many pages. \texttt{details} lists each field and issue.\\
+401 & UNAUTHENTICATED & Missing, invalid or expired token; wrong password.\\
+403 & FORBIDDEN & The role may not perform the action.\\
+404 & NOT\_FOUND & No such resource, or the user may not see it.\\
+409 & INVALID\_STATE & The status does not allow the action (for example approve while PROCESSING), or a blocking finding is open, or a user already exists.\\
+413 & FILE\_TOO\_LARGE & Upload above the size limit.\\
+415 & UNSUPPORTED\_MEDIA\_TYPE & File type not accepted.\\
+429 & RATE\_LIMITED & Too many sign-in attempts.\\
+502 & ERP\_UNAVAILABLE & The ERP rejected the record or could not be reached. The attempt is stored and retry is safe.\\
+500 & INTERNAL\_ERROR & Unexpected error. The message is generic; details are only in the server log.\\
+\hline
+\end{longtable}}
+Responses never contain stack traces, file-system paths, credentials or the internals of the ERP.
+
+\section{Idempotency and concurrency}
+\begin{itemize}
+\item \texttt{POST /documents/\{id\}/submit} is safe to repeat. The key sent to the ERP is derived from the document identifier, so every retry uses the same key. If the document is already \texttt{ERP\_SENT}, the call returns the successful attempt and sends nothing.
+\item Approve, reject and submit run in one transaction that locks the document row. Two reviewers acting at the same moment cannot both succeed: the second receives \texttt{409}.
+\item The double-click problem in the interface is handled twice: the button is disabled after the first click, and the backend is idempotent anyway.
+\end{itemize}
+
+\section{How the contract will be used}
+The contract is the shared reference for the React client and the FastAPI routers. When the routers are implemented, the schema FastAPI generates itself is compared with \texttt{openapi.yaml}, and differences are resolved deliberately, either by fixing the code or by revising the contract. A contract test for each endpoint is part of the Phase 3 and later work.

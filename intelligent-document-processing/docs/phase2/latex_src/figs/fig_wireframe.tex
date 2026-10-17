@@ -1,0 +1,24 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\draw[rounded corners=4pt,fill=white,draw=navy,line width=1pt] (0,0) rectangle (16,10);
+\fill[navy] (0,9.2) rectangle (16,10); \node[text=white,font=\sffamily\bfseries\small,anchor=west] at (0.3,9.6) {\projname{} -- Review workspace};
+\node[text=white,font=\sffamily\scriptsize,anchor=east] at (15.7,9.6) {reviewer@example.org $\cdot$ Sign out};
+\draw[fill=mist,draw=slate] (0.3,0.4) rectangle (7.7,8.8);
+\node[font=\sffamily\scriptsize\bfseries,text=navy,anchor=north west] at (0.45,8.7) {Source document (page 1 of 2)};
+\draw[fill=white,draw=slate] (0.8,0.8) rectangle (7.2,8.1);
+\foreach \y in {7.5,6.3,3.4,2.6,1.8}{\fill[slate!25] (1.1,\y) rectangle (4.6,\y+0.22);}
+\draw[amber!80!black,line width=1.2pt,fill=amber!25] (4.9,7.3) rectangle (6.9,7.85); \node[font=\sffamily\tiny] at (5.9,7.57) {INV-2026-001};
+\draw[coral,line width=1.2pt,fill=coral!15] (5.2,2.1) rectangle (6.9,2.65); \node[font=\sffamily\tiny] at (6.05,2.38) {125 000 XAF};
+\draw[slate!40] (1.1,5.9) rectangle (6.9,3.9); \foreach \y in {5.4,4.9,4.4}{\draw[slate!30] (1.1,\y) -- (6.9,\y);}
+\draw[fill=white,draw=slate] (8.0,0.4) rectangle (15.7,8.8);
+\node[font=\sffamily\scriptsize\bfseries,text=navy,anchor=north west] at (8.15,8.7) {Extracted fields};
+\foreach \y/\n/\v/\cf/\col in {7.6/Invoice number/INV-2026-001/0.91/leaf, 6.5/Supplier/ACME Cameroun SARL/0.88/leaf, 5.4/Invoice date/2026-09-30/0.95/leaf, 4.3/Subtotal/105 042/0.79/amber, 3.2/Tax (19.25\%)/20 223/0.77/amber, 2.1/Total/125 000/0.68/coral}{
+  \node[font=\sffamily\tiny,text=slate,anchor=west] at (8.2,\y+0.35) {\n};
+  \draw[rounded corners=2pt,fill=white,draw=\col,line width=0.9pt] (8.2,\y-0.3) rectangle (13.0,\y+0.25);
+  \node[font=\sffamily\scriptsize,anchor=west] at (8.3,\y-0.02) {\v};
+  \node[font=\sffamily\tiny\bfseries,text=\col!80!black,anchor=west] at (13.2,\y-0.02) {\cf};}
+\node[font=\sffamily\tiny\bfseries,text=coral,anchor=west] at (14.1,2.08) {REVIEW};
+\node[font=\sffamily\tiny,text=coral,text width=6.8cm,anchor=north west] at (8.2,1.55) {Subtotal + tax $\neq$ total (tolerance exceeded): please check};
+\draw[rounded corners=3pt,fill=leaf!85!black,draw=none] (8.2,0.55) rectangle (10.6,1.05); \node[text=white,font=\sffamily\bfseries\tiny] at (9.4,0.8) {Approve};
+\draw[rounded corners=3pt,fill=coral,draw=none] (10.8,0.55) rectangle (13.0,1.05); \node[text=white,font=\sffamily\bfseries\tiny] at (11.9,0.8) {Reject};
+\draw[rounded corners=3pt,fill=white,draw=slate] (13.2,0.55) rectangle (15.5,1.05); \node[font=\sffamily\bfseries\tiny] at (14.35,0.8) {Save draft};
+\end{tikzpicture}

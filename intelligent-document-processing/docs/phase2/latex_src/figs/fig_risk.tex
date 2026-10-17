@@ -1,0 +1,19 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\foreach \r/\ry in {0/High,1/Medium,2/Low}{
+  \node[font=\sffamily\scriptsize\bfseries,text=navy,anchor=east] at (-0.15,{2.5-\r*2.2}) {\ry};}
+\foreach \c/\cx in {0/Low,1/Medium,2/High}{
+  \node[font=\sffamily\scriptsize\bfseries,text=navy] at ({1.5+\c*3.2},-3.1) {\cx};}
+% cells (row 0 = high likelihood)
+\foreach \r/\c/\col in {0/0/amber!45,0/1/coral!40,0/2/coral!70, 1/0/leaf!35,1/1/amber!45,1/2/coral!40, 2/0/leaf!35,2/1/leaf!35,2/2/amber!45}{
+  \fill[\col] ({\c*3.2},{3.6-\r*2.2}) rectangle ({\c*3.2+3.0},{3.6-\r*2.2-2.0});}
+\node[font=\sffamily\small\bfseries,text=navy] at (-1.6,2.5) {};
+\node[rotate=90,font=\sffamily\scriptsize\bfseries,text=navy] at (-1.2,1.4) {Likelihood};
+\node[font=\sffamily\scriptsize\bfseries,text=navy] at (4.8,-3.7) {Impact};
+\node[font=\sffamily\small\bfseries,text=navy,align=center] at (7.9,2.6) {R1};  % high L, high I
+\node[font=\sffamily\small\bfseries,text=navy,align=center] at (4.7,2.6) {R7};  % high L, medium I
+\node[font=\sffamily\small\bfseries,text=navy,align=center] at (7.9,0.4) {R2 \ R4 \ R10}; % medium L, high I
+\node[font=\sffamily\small\bfseries,text=navy,align=center] at (4.7,0.4) {R8};  % medium L, medium I
+\node[font=\sffamily\small\bfseries,text=navy,align=center] at (1.5,0.4) {R3 \ R9}; % medium L, low I
+\node[font=\sffamily\small\bfseries,text=navy,align=center] at (7.9,-1.8) {R5};  % low L, high I
+\node[font=\sffamily\small\bfseries,text=navy,align=center] at (4.7,-1.8) {R6};  % low L, medium I
+\end{tikzpicture}

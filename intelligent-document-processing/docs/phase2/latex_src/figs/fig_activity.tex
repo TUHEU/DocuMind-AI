@@ -1,0 +1,44 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+% lanes
+\foreach \x/\t/\c in {0/Operator/mist, 4/System (API + worker)/mint, 8/Reviewer/sand, 12/ERP adapter/blush}{
+  \fill[\c] (\x,-16.4) rectangle (\x+4,0.2);
+  \draw[navy,line width=0.5pt] (\x,-16.4) rectangle (\x+4,0.2);
+  \fill[navy] (\x,-0.6) rectangle (\x+4,0.2);
+  \node[text=white,font=\sffamily\bfseries\scriptsize] at (\x+2,-0.2) {\t};}
+% nodes
+\node[initial] (s) at (2,-1.2) {};
+\node[box,minimum width=2.8cm] (a1) at (2,-2.3) {Select and upload\\ PDF / PNG / JPEG};
+\node[box,minimum width=2.8cm] (a2) at (6,-2.3) {Check type, size,\\ integrity, permissions};
+\node[diamond,aspect=2,draw=navy,fill=white,inner sep=1pt,font=\sffamily\scriptsize,align=center] (d1) at (6,-4.0) {Accepted?};
+\node[box,minimum width=2.8cm,fill=blush,draw=coral] (a3) at (2,-4.0) {Show rejection\\ reason};
+\node[final] (e1) at (2,-5.3) {};
+\node[box,minimum width=2.8cm,text width=3.1cm] (a4) at (6,-5.5) {Store original, SHA-256, create job};
+\node[box,minimum width=2.8cm] (a5) at (6,-6.8) {Render pages and\\ preprocess images};
+\node[box,minimum width=2.8cm] (a6) at (6,-8.1) {Recognize text (OCR)};
+\node[box,minimum width=2.8cm] (a7) at (6,-9.4) {Extract invoice fields};
+\node[box,minimum width=2.8cm] (a8) at (6,-10.7) {Validate and score\\ confidence};
+\node[box,minimum width=2.8cm] (b1) at (10,-10.7) {Inspect evidence,\\ correct fields};
+\node[diamond,aspect=2,draw=navy,fill=white,inner sep=1pt,font=\sffamily\scriptsize,align=center] (d2) at (10,-12.3) {Approve?};
+\node[box,minimum width=2.8cm,fill=blush,draw=coral] (b2) at (10,-14.0) {Reject with reason};
+\node[final] (e2) at (10,-15.1) {};
+\node[box,minimum width=2.8cm] (c1) at (14,-12.3) {Map and validate\\ ERP payload};
+\node[box,minimum width=2.8cm] (c2) at (14,-13.6) {Submit with\\ idempotency key};
+\node[box,minimum width=2.8cm] (c3) at (14,-14.9) {Record response\\ and audit event};
+\node[final] (e3) at (14,-15.9) {};
+% edges
+\draw[arr] (s) -- (a1);
+\draw[arr] (a1) -- (a2.west);
+\draw[arr] (a2) -- (d1);
+\draw[arr] (d1.west) -- node[lbl,above]{No} (a3.east);
+\draw[arr] (a3) -- (e1);
+\draw[arr] (d1) -- node[lbl,right]{Yes} (a4);
+\foreach \a/\b in {a4/a5,a5/a6,a6/a7,a7/a8}{\draw[arr] (\a) -- (\b);}
+\draw[arr] (a8) -- (b1);
+\draw[arr] (b1) -- (d2);
+\draw[arr] (d2) -- node[lbl,right]{No} (b2);
+\draw[arr] (b2) -- (e2);
+\draw[arr] (d2.east) -- node[lbl,above]{Yes} (c1.west);
+\draw[arr] (c1) -- (c2);
+\draw[arr] (c2) -- (c3);
+\draw[arr] (c3) -- (e3);
+\end{tikzpicture}
