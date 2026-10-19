@@ -9,3 +9,6 @@ data/
 *.log
 .idea/
 .vscode/
+node_modules/
+dist/
+frontend/.env

@@ -20,7 +20,7 @@ CREATE TABLE users (
   full_name          VARCHAR(150) NOT NULL,
   password_hash      VARCHAR(255) NOT NULL,           -- Argon2id or bcrypt hash, never plaintext
   role               VARCHAR(20)  NOT NULL,           -- OPERATOR | REVIEWER | ADMIN
-  is_active          TINYINT(1)   NOT NULL DEFAULT 1,
+  is_active          TINYINT      NOT NULL DEFAULT 1,
   failed_login_count INT          NOT NULL DEFAULT 0,
   locked_until       DATETIME     NULL,
   last_login_at      DATETIME     NULL,

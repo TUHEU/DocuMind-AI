@@ -1,0 +1,7 @@
+# Install AFTER requirements.txt, and only when you reach image processing / OCR (Phase 6 onward).
+# PyTorch is large (hundreds of MB). On Windows without a GPU use the CPU build:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+numpy>=1.26
+opencv-python-headless>=4.9
+pymupdf>=1.24
+pillow>=10.0
