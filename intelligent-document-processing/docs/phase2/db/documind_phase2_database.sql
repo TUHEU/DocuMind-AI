@@ -1,4 +1,4 @@
--- DocuMind AI Phase 2: ONE file. It DELETES any old idp_db, then recreates it with all 11 tables.
+-- DocuMind AI Phase 2: ONE file. It DELETES any old idp_db, then recreates it with all 16 tables.
 DROP DATABASE IF EXISTS idp_db;
 CREATE DATABASE idp_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE idp_db;
@@ -17,14 +17,31 @@ USE idp_db;
 SET NAMES utf8mb4;
 
 -- ---------------------------------------------------------------------
--- 1. users : identity and role (RBAC)
+-- 1. organizations : companies that publish or answer listings (tender module)
+-- ---------------------------------------------------------------------
+CREATE TABLE organizations (
+  org_id          CHAR(36)     NOT NULL,
+  name            VARCHAR(200) NOT NULL,
+  registration_no VARCHAR(60)  NULL,                  -- trade register or tax number, as given
+  country         VARCHAR(60)  NULL,
+  contact_email   VARCHAR(255) NULL,
+  is_active       TINYINT      NOT NULL DEFAULT 1,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (org_id),
+  UNIQUE KEY uq_organizations_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 2. users : identity and role (RBAC)
 -- ---------------------------------------------------------------------
 CREATE TABLE users (
   user_id            CHAR(36)     NOT NULL,
   email              VARCHAR(255) NOT NULL,
   full_name          VARCHAR(150) NOT NULL,
   password_hash      VARCHAR(255) NOT NULL,           -- Argon2id or bcrypt hash, never plaintext
-  role               VARCHAR(20)  NOT NULL,           -- OPERATOR | REVIEWER | ADMIN
+  role               VARCHAR(20)  NOT NULL,           -- OPERATOR | REVIEWER | ADMIN | COMPANY | APPLICANT
+  org_id             CHAR(36)     NULL,               -- set for COMPANY users
   is_active          TINYINT      NOT NULL DEFAULT 1,
   failed_login_count INT          NOT NULL DEFAULT 0,
   locked_until       DATETIME     NULL,
@@ -33,11 +50,13 @@ CREATE TABLE users (
   updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (user_id),
   UNIQUE KEY uq_users_email (email),
-  CONSTRAINT ck_users_role CHECK (role IN ('OPERATOR','REVIEWER','ADMIN'))
+  KEY idx_users_org (org_id),
+  CONSTRAINT fk_users_org FOREIGN KEY (org_id) REFERENCES organizations (org_id),
+  CONSTRAINT ck_users_role CHECK (role IN ('OPERATOR','REVIEWER','ADMIN','COMPANY','APPLICANT'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 2. documents : one uploaded source file and its workflow state
+-- 3. documents : one uploaded source file and its workflow state
 -- ---------------------------------------------------------------------
 CREATE TABLE documents (
   document_id       CHAR(36)     NOT NULL,
@@ -62,13 +81,13 @@ CREATE TABLE documents (
   KEY idx_documents_uploaded_by (uploaded_by, created_at),
   CONSTRAINT fk_documents_user FOREIGN KEY (uploaded_by) REFERENCES users (user_id),
   CONSTRAINT ck_documents_size CHECK (size_bytes > 0),
-  CONSTRAINT ck_documents_type CHECK (document_type IN ('INVOICE','RECEIPT','FORM','UNKNOWN')),
+  CONSTRAINT ck_documents_type CHECK (document_type IN ('INVOICE','RECEIPT','FORM','OFFER','CV','UNKNOWN')),
   CONSTRAINT ck_documents_status CHECK (status IN
     ('UPLOADED','QUEUED','PROCESSING','NEEDS_REVIEW','APPROVED','REJECTED','ERP_SENT','ERP_FAILED','FAILED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 3. processing_runs : each attempt to process a document (history kept)
+-- 4. processing_runs : each attempt to process a document (history kept)
 -- ---------------------------------------------------------------------
 CREATE TABLE processing_runs (
   run_id           CHAR(36)    NOT NULL,
@@ -90,7 +109,7 @@ CREATE TABLE processing_runs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 4. extracted_fields : candidate header fields of one run
+-- 5. extracted_fields : candidate header fields of one run
 --    field_name values: supplier_name, supplier_tax_id, invoice_number,
 --    invoice_date, due_date, po_reference, subtotal, tax_amount,
 --    total_amount, currency  (line items live in extracted_line_items)
@@ -115,7 +134,7 @@ CREATE TABLE extracted_fields (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 5. extracted_line_items : invoice table rows of one run (optional field 7)
+-- 6. extracted_line_items : invoice table rows of one run (optional field 7)
 -- ---------------------------------------------------------------------
 CREATE TABLE extracted_line_items (
   item_id      CHAR(36)       NOT NULL,
@@ -134,7 +153,7 @@ CREATE TABLE extracted_line_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 6. validation_findings : document-level rule results (BR rules)
+-- 7. validation_findings : document-level rule results (BR rules)
 -- ---------------------------------------------------------------------
 CREATE TABLE validation_findings (
   finding_id  CHAR(36)     NOT NULL,
@@ -151,7 +170,7 @@ CREATE TABLE validation_findings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 7. reviews : human decisions on a document
+-- 8. reviews : human decisions on a document
 -- ---------------------------------------------------------------------
 CREATE TABLE reviews (
   review_id    CHAR(36)     NOT NULL,
@@ -170,7 +189,7 @@ CREATE TABLE reviews (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 8. field_corrections : every manual change, original value preserved (BR-5)
+-- 9. field_corrections : every manual change, original value preserved (BR-5)
 -- ---------------------------------------------------------------------
 CREATE TABLE field_corrections (
   correction_id CHAR(36)     NOT NULL,
@@ -187,7 +206,7 @@ CREATE TABLE field_corrections (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 9. erp_attempts : every outbound submission (BR-4, BR-6)
+-- 10. erp_attempts : every outbound submission (BR-4, BR-6)
 -- ---------------------------------------------------------------------
 CREATE TABLE erp_attempts (
   attempt_id       CHAR(36)     NOT NULL,
@@ -216,7 +235,7 @@ CREATE TABLE erp_attempts (
 -- and checked by the retry tests required by objective O9.
 
 -- ---------------------------------------------------------------------
--- 10. audit_events : append-only trail (FR-13)
+-- 11. audit_events : append-only trail (FR-13)
 -- ---------------------------------------------------------------------
 CREATE TABLE audit_events (
   event_id     BIGINT       NOT NULL AUTO_INCREMENT,
@@ -244,7 +263,7 @@ CREATE TRIGGER trg_audit_no_delete BEFORE DELETE ON audit_events
   FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit_events is append-only';
 
 -- ---------------------------------------------------------------------
--- 11. system_settings : administrator-editable rules and thresholds (FR-17)
+-- 12. system_settings : administrator-editable rules and thresholds (FR-17)
 -- ---------------------------------------------------------------------
 CREATE TABLE system_settings (
   setting_key  VARCHAR(60)  NOT NULL,
@@ -264,3 +283,87 @@ INSERT INTO system_settings (setting_key, setting_value, description) VALUES
  ('max_upload_bytes',      '10485760', 'Maximum upload size (10 MB)'),
  ('max_pdf_pages',         '10',    'Maximum pages accepted per PDF'),
  ('allowed_mime_types',    'application/pdf,image/png,image/jpeg', 'Accepted upload types');
+
+-- ---------------------------------------------------------------------
+-- 13. listings : a tender, a job or an internship (tender module; jobs are a stretch goal)
+-- ---------------------------------------------------------------------
+CREATE TABLE listings (
+  listing_id      CHAR(36)      NOT NULL,
+  org_id          CHAR(36)      NOT NULL,             -- the publishing company
+  created_by      CHAR(36)      NOT NULL,
+  listing_type    VARCHAR(20)   NOT NULL,             -- TENDER | JOB | INTERNSHIP
+  title           VARCHAR(200)  NOT NULL,
+  description     TEXT          NOT NULL,
+  requirements    TEXT          NULL,
+  location        VARCHAR(120)  NULL,
+  budget_amount   DECIMAL(15,2) NULL,                 -- tenders only
+  currency        CHAR(3)       NULL,
+  deadline        DATETIME      NOT NULL,             -- UTC
+  status          VARCHAR(20)   NOT NULL DEFAULT 'DRAFT',
+  awarded_application_id CHAR(36) NULL,               -- winner of a tender (set on award)
+  created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (listing_id),
+  KEY idx_listings_status_deadline (status, deadline),
+  KEY idx_listings_type (listing_type, status),
+  KEY idx_listings_org (org_id, created_at),
+  CONSTRAINT fk_listings_org  FOREIGN KEY (org_id)     REFERENCES organizations (org_id),
+  CONSTRAINT fk_listings_user FOREIGN KEY (created_by) REFERENCES users (user_id),
+  CONSTRAINT ck_listings_type   CHECK (listing_type IN ('TENDER','JOB','INTERNSHIP')),
+  CONSTRAINT ck_listings_status CHECK (status IN ('DRAFT','OPEN','CLOSED','AWARDED','CANCELLED')),
+  CONSTRAINT ck_listings_budget CHECK (budget_amount IS NULL OR budget_amount >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 14. listing_documents : files that belong to a listing (call for tender, job description)
+-- ---------------------------------------------------------------------
+CREATE TABLE listing_documents (
+  listing_id   CHAR(36)    NOT NULL,
+  document_id  CHAR(36)    NOT NULL,
+  doc_role     VARCHAR(20) NOT NULL DEFAULT 'ATTACHMENT',   -- CALL_DOCUMENT | ATTACHMENT
+  created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (listing_id, document_id),
+  CONSTRAINT fk_ld_listing  FOREIGN KEY (listing_id)  REFERENCES listings (listing_id),
+  CONSTRAINT fk_ld_document FOREIGN KEY (document_id) REFERENCES documents (document_id),
+  CONSTRAINT ck_ld_role CHECK (doc_role IN ('CALL_DOCUMENT','ATTACHMENT'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 15. applications : one company offer or one candidate application for a listing
+-- ---------------------------------------------------------------------
+CREATE TABLE applications (
+  application_id CHAR(36)     NOT NULL,
+  listing_id     CHAR(36)     NOT NULL,
+  applicant_id   CHAR(36)     NOT NULL,                -- the user who applies
+  applicant_org_id CHAR(36)   NULL,                    -- the answering company (tenders)
+  cover_note     TEXT         NULL,
+  status         VARCHAR(20)  NOT NULL DEFAULT 'SUBMITTED',
+  submitted_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (application_id),
+  UNIQUE KEY uq_applications_once (listing_id, applicant_id),   -- one application per person per listing
+  KEY idx_applications_listing (listing_id, status),
+  KEY idx_applications_applicant (applicant_id, submitted_at),
+  CONSTRAINT fk_app_listing   FOREIGN KEY (listing_id)       REFERENCES listings (listing_id),
+  CONSTRAINT fk_app_applicant FOREIGN KEY (applicant_id)     REFERENCES users (user_id),
+  CONSTRAINT fk_app_org       FOREIGN KEY (applicant_org_id) REFERENCES organizations (org_id),
+  CONSTRAINT ck_app_status CHECK (status IN ('SUBMITTED','UNDER_REVIEW','SHORTLISTED','ACCEPTED','REJECTED','WITHDRAWN'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE listings
+  ADD CONSTRAINT fk_listings_awarded FOREIGN KEY (awarded_application_id) REFERENCES applications (application_id);
+
+-- ---------------------------------------------------------------------
+-- 16. application_documents : the files an application carries (offer PDF, CV, cover letter)
+--     Each file is an ordinary row of documents, so it goes through OCR, extraction and review.
+-- ---------------------------------------------------------------------
+CREATE TABLE application_documents (
+  application_id CHAR(36)    NOT NULL,
+  document_id    CHAR(36)    NOT NULL,
+  doc_role       VARCHAR(20) NOT NULL,                  -- OFFER | CV | COVER_LETTER | ATTACHMENT
+  created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (application_id, document_id),
+  CONSTRAINT fk_ad_application FOREIGN KEY (application_id) REFERENCES applications (application_id),
+  CONSTRAINT fk_ad_document    FOREIGN KEY (document_id)    REFERENCES documents (document_id),
+  CONSTRAINT ck_ad_role CHECK (doc_role IN ('OFFER','CV','COVER_LETTER','ATTACHMENT'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

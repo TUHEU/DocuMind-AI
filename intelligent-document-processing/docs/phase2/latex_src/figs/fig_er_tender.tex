@@ -1,0 +1,26 @@
+\begin{tikzpicture}[x=1cm,y=1cm,
+  ent/.style={uclass2,text width=3.45cm},
+  ]
+\node[ent] (org) at (0,0) {\centerline{{\bfseries ORGANIZATION}}\nodepart{two}
+ \textbf{PK} org\_id\\ name \textit{(unique)}\\ registration\_no\\ country\\ contact\_email\\ is\_active};
+\node[ent] (lst) at (4.7,0) {\centerline{{\bfseries LISTING}}\nodepart{two}
+ \textbf{PK} listing\_id\\ \textit{FK} org\_id, created\_by\\ listing\_type, title\\ budget\_amount, currency\\ deadline, status\\ \textit{FK} awarded\_application\_id};
+\node[ent] (app) at (9.4,0) {\centerline{{\bfseries APPLICATION}}\nodepart{two}
+ \textbf{PK} application\_id\\ \textit{FK} listing\_id\\ \textit{FK} applicant\_id\\ \textit{FK} applicant\_org\_id\\ cover\_note, status\\ submitted\_at};
+\node[ent] (apd) at (14.1,0) {\centerline{{\bfseries APPLICATION\_DOCUMENT}}\nodepart{two}
+ \textbf{PK, FK} application\_id\\ \textbf{PK, FK} document\_id\\ doc\_role\\ created\_at};
+\node[ent] (usr) at (0,-5.3) {\centerline{{\bfseries USER}}\nodepart{two}
+ \textbf{PK} user\_id\\ role\\ \textit{FK} org\_id\\ \textit{(see Figure~\ref{fig:p2er})}};
+\node[ent] (lsd) at (4.7,-5.3) {\centerline{{\bfseries LISTING\_DOCUMENT}}\nodepart{two}
+ \textbf{PK, FK} listing\_id\\ \textbf{PK, FK} document\_id\\ doc\_role\\ created\_at};
+\node[ent] (doc) at (9.4,-5.3) {\centerline{{\bfseries DOCUMENT}}\nodepart{two}
+ \textbf{PK} document\_id\\ document\_type\\ status\\ \textit{(see Figure~\ref{fig:p2er})}};
+\tikzset{er/.style={color=navy,line width=0.7pt}}
+\draw[er] (org.east) -- node[lbl,pos=0.15,above]{1} node[lbl,pos=0.85,above]{N} (lst.west);
+\draw[er] (lst.east) -- node[lbl,pos=0.15,above]{1} node[lbl,pos=0.85,above]{N} (app.west);
+\draw[er] (app.east) -- node[lbl,pos=0.15,above]{1} node[lbl,pos=0.85,above]{N} (apd.west);
+\draw[er] (org.south) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (usr.north);
+\draw[er] (lst.south) -- node[lbl,pos=0.15,left]{1} node[lbl,pos=0.85,left]{N} (lsd.north);
+\draw[er] (doc.west) -- node[lbl,pos=0.15,above]{1} node[lbl,pos=0.85,above]{N} (lsd.east);
+\draw[er] (apd.south west) -- node[lbl,pos=0.85,right]{1} (doc.north east);
+\end{tikzpicture}

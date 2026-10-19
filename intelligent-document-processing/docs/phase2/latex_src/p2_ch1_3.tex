@@ -44,7 +44,7 @@ History & Every run, correction and ERP attempt is kept. & Business rules BR-5 a
 \emph{Story US-06.} The chapter fixes the frontend, backend and database technologies, shows the OCR pipeline and the ERP integration in one diagram, and states the rules that keep the modules separate.
 
 \section{Scope and context}
-\projname{} sits between people who hold invoices and the ERP that must record them. Three kinds of people use it (operator, reviewer, administrator). One external system receives data from it (the ERP). Everything else, including OCR, runs inside the system boundary.
+\projname{} sits between people who hold invoices and the ERP that must record them. Three kinds of people use it (operator, reviewer, administrator); Chapter~\ref{ch:p2tender} adds companies and applicants for the tender module. One external system receives data from it (the ERP). Everything else, including OCR, runs inside the system boundary.
 
 \section{Layered architecture}
 \begin{figure}[H]\centering
@@ -139,14 +139,15 @@ MySQL stores structured data, not the uploaded files. Each document row holds an
 \section{Entity-relationship diagram}
 \begin{figure}[H]\centering
 \resizebox{\textwidth}{!}{\input{figs/fig_er_p2}}
-\caption{Entity-relationship diagram of the \nTables{} tables. Lines show the main one-to-many relationships; the table in Section~\ref{sec:p2fk} lists every foreign key.}\label{fig:p2er}
+\caption{Entity-relationship diagram of the \nTables{} tables. Lines show the main one-to-many relationships; the table in Section~\ref{sec:p2fk} lists every foreign key. The tables of the tender module are in Figure~\ref{fig:p2tender}.}\label{fig:p2er}
 \end{figure}
 
 \section{Purpose of each table}
 {\tblstart\small
 \begin{longtable}{L{3.6cm}L{10.2cm}}
 \hdrrow \hdr{Table} & \hdr{Purpose}\\ \endhead
-\texttt{users} & Identity, role (OPERATOR, REVIEWER, ADMIN), active flag and login-failure counter. Only a password hash is stored.\\
+\texttt{organizations} & A company that publishes or answers a listing (tender module, Chapter~\ref{ch:p2tender}).\\
+\texttt{users} & Identity, role (OPERATOR, REVIEWER, ADMIN, COMPANY, APPLICANT), optional company, active flag and login-failure counter. Only a password hash is stored.\\
 \texttt{documents} & One uploaded file: storage key, SHA-256, type, size, pages, language and current workflow status.\\
 \texttt{processing\_runs} & One processing attempt of a document, with engine, model version, preprocessing settings, status and sanitised error. Reprocessing adds a run.\\
 \texttt{extracted\_fields} & The header fields of one run (supplier, invoice number, dates, subtotal, tax, total, currency), with raw value, normalised value, reviewed value, confidence, page, bounding box and validation status.\\
@@ -157,6 +158,7 @@ MySQL stores structured data, not the uploaded files. Each document row holds an
 \texttt{erp\_attempts} & Each submission to the ERP: attempt number, idempotency key, destination, status, ERP reference and sanitised error (rules BR-4 and BR-6).\\
 \texttt{audit\_events} & Append-only record of who did what and when, with before and after values.\\
 \texttt{system\_settings} & Administrator-editable thresholds and limits, so a change needs no redeployment (FR-17).\\
+\texttt{listings}, \texttt{listing\_documents}, \texttt{applications}, \texttt{application\_documents} & Tender module: a tender, job or internship, the files it carries, the applications received and their files. Described in Chapter~\ref{ch:p2tender}.\\
 \hline
 \end{longtable}}
 
@@ -168,10 +170,10 @@ The table below is generated from the database that was created from \texttt{sch
 {\tblstart\small
 \begin{longtable}{L{4.4cm}L{4.4cm}L{5.0cm}}
 \hdrrow \hdr{Constraint} & \hdr{Where} & \hdr{What it protects}\\ \endhead
-Primary key (UUID) & Every table except \texttt{audit\_events} and \texttt{system\_settings}. & Stable identity; \texttt{audit\_events} uses an increasing number to keep order.\\
-Unique & \texttt{users.email}; \texttt{documents.storage\_key}; (\texttt{document\_id}, \texttt{run\_number}); (\texttt{run\_id}, \texttt{field\_name}); (\texttt{run\_id}, \texttt{line\_no}); (\texttt{document\_id}, \texttt{attempt\_no}). & No duplicate accounts, no two runs with the same number, one value per field per run.\\
-Foreign keys & \texttt{documents.uploaded\_by}; \texttt{processing\_runs.document\_id}; \texttt{extracted\_fields.run\_id}; \texttt{extracted\_line\_items.run\_id}; \texttt{validation\_findings.run\_id}; \texttt{reviews.document\_id, run\_id, reviewer\_id}; \texttt{field\_corrections.field\_id, corrected\_by}; \texttt{erp\_attempts.document\_id}; \texttt{audit\_events.actor\_id, document\_id}; \texttt{system\_settings.updated\_by}. & No row can refer to something that does not exist.\\
-Check & Role, document status, document type, run status, OCR engine, validation status, severity, review decision, ERP destination and status, confidence between 0 and 1, size above 0. & Invalid values are refused by the database itself.\\
+Primary key (UUID) & Every table except \texttt{audit\_events}, \texttt{system\_settings} and the two link tables (which use a pair of keys). & Stable identity; \texttt{audit\_events} uses an increasing number to keep order.\\
+Unique & \texttt{users.email}; \texttt{documents.storage\_key}; (\texttt{document\_id}, \texttt{run\_number}); (\texttt{run\_id}, \texttt{field\_name}); (\texttt{run\_id}, \texttt{line\_no}); (\texttt{document\_id}, \texttt{attempt\_no}); \texttt{organizations.name}; (\texttt{listing\_id}, \texttt{applicant\_id}). & No duplicate accounts, no two runs with the same number, one value per field per run.\\
+Foreign keys & \texttt{documents.uploaded\_by}; \texttt{processing\_runs.document\_id}; \texttt{extracted\_fields.run\_id}; \texttt{extracted\_line\_items.run\_id}; \texttt{validation\_findings.run\_id}; \texttt{reviews.document\_id, run\_id, reviewer\_id}; \texttt{field\_corrections.field\_id, corrected\_by}; \texttt{erp\_attempts.document\_id}; \texttt{audit\_events.actor\_id, document\_id}; \texttt{system\_settings.updated\_by}; \texttt{users.org\_id}; \texttt{listings.org\_id, created\_by, awarded\_application\_id}; \texttt{applications.listing\_id, applicant\_id, applicant\_org\_id}; the two link tables to \texttt{documents}. & No row can refer to something that does not exist.\\
+Check & Role, listing type and status, application status, link-table roles, document status, document type, run status, OCR engine, validation status, severity, review decision, ERP destination and status, confidence between 0 and 1, size above 0. & Invalid values are refused by the database itself.\\
 Index & \texttt{documents} by status and date, by hash, and by uploader and date; \texttt{erp\_attempts} by idempotency key and by status; \texttt{audit\_events} by document, by actor and by action. & Review queue, duplicate-file lookup, dashboard counts and audit searches stay fast.\\
 \hline
 \end{longtable}}
@@ -186,7 +188,7 @@ Audit rows are inserted by the same transaction that makes the change. Two datab
 The \texttt{documents.status} column holds the nine states of Figure~\ref{fig:p2state} (Chapter~\ref{ch:p2flow}). Processing history lives in \texttt{processing\_runs}; a reprocess adds a run with the next \texttt{run\_number} and keeps all earlier runs and their fields. The latest run is the one with the highest number.
 
 \section{Verification performed}\label{sec:p2dbtests}
-\texttt{schema.sql} was loaded into an empty database on MariaDB 10.11, which accepted all \nTables{} tables and the starting settings. Sample rows were inserted, then nine invalid operations were tried. Each one was refused.
+\texttt{schema.sql} was loaded into an empty database on MariaDB 10.11, which accepted all \nTables{} tables and the starting settings. Sample rows were inserted, then nine invalid operations were tried on the final version of the schema, which includes the tender module (Chapter~\ref{ch:p2tender}). Each one was refused.
 {\tblstart\small
 \begin{longtable}{L{0.8cm}L{7.0cm}L{6.0cm}}
 \hdrrow \hdr{No.} & \hdr{Invalid operation tried} & \hdr{Result}\\ \endhead

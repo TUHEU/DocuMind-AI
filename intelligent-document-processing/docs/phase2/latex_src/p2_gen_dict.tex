@@ -1,13 +1,23 @@
 {\tblstart\footnotesize
 \begin{longtable}{L{4.2cm}L{3.4cm}L{1.1cm}L{5.0cm}}
 \hdrrow \hdr{Column} & \hdr{Type} & \hdr{Null} & \hdr{Key}\\ \endhead
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{organizations}}}\\
+\texttt{org\_id} & char(36) & no & PK\\
+\texttt{name} & varchar(200) & no & UNIQUE\\
+\texttt{registration\_no} & varchar(60) & yes & \\
+\texttt{country} & varchar(60) & yes & \\
+\texttt{contact\_email} & varchar(255) & yes & \\
+\texttt{is\_active} & tinyint(4) & no & \\
+\texttt{created\_at} & datetime & no & \\
+\texttt{updated\_at} & datetime & no & \\
 \rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{users}}}\\
 \texttt{user\_id} & char(36) & no & PK\\
 \texttt{email} & varchar(255) & no & UNIQUE\\
 \texttt{full\_name} & varchar(150) & no & \\
 \texttt{password\_hash} & varchar(255) & no & \\
 \texttt{role} & varchar(20) & no & \\
-\texttt{is\_active} & tinyint(1) & no & \\
+\texttt{org\_id} & char(36) & yes & FK $\rightarrow$ organizations\\
+\texttt{is\_active} & tinyint(4) & no & \\
 \texttt{failed\_login\_count} & int & no & \\
 \texttt{locked\_until} & datetime & yes & \\
 \texttt{last\_login\_at} & datetime & yes & \\
@@ -118,5 +128,40 @@
 \texttt{description} & varchar(255) & yes & \\
 \texttt{updated\_by} & char(36) & yes & FK $\rightarrow$ users\\
 \texttt{updated\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{listings}}}\\
+\texttt{listing\_id} & char(36) & no & PK\\
+\texttt{org\_id} & char(36) & no & FK $\rightarrow$ organizations\\
+\texttt{created\_by} & char(36) & no & FK $\rightarrow$ users\\
+\texttt{listing\_type} & varchar(20) & no & \\
+\texttt{title} & varchar(200) & no & \\
+\texttt{description} & text & no & \\
+\texttt{requirements} & text & yes & \\
+\texttt{location} & varchar(120) & yes & \\
+\texttt{budget\_amount} & decimal(15,2) & yes & \\
+\texttt{currency} & char(3) & yes & \\
+\texttt{deadline} & datetime & no & \\
+\texttt{status} & varchar(20) & no & \\
+\texttt{awarded\_application\_id} & char(36) & yes & FK $\rightarrow$ applications\\
+\texttt{created\_at} & datetime & no & \\
+\texttt{updated\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{listing\_documents}}}\\
+\texttt{listing\_id} & char(36) & no & PK, FK $\rightarrow$ listings\\
+\texttt{document\_id} & char(36) & no & PK, FK $\rightarrow$ documents\\
+\texttt{doc\_role} & varchar(20) & no & \\
+\texttt{created\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{applications}}}\\
+\texttt{application\_id} & char(36) & no & PK\\
+\texttt{listing\_id} & char(36) & no & FK $\rightarrow$ listings\\
+\texttt{applicant\_id} & char(36) & no & FK $\rightarrow$ users\\
+\texttt{applicant\_org\_id} & char(36) & yes & FK $\rightarrow$ organizations\\
+\texttt{cover\_note} & text & yes & \\
+\texttt{status} & varchar(20) & no & \\
+\texttt{submitted\_at} & datetime & no & \\
+\texttt{updated\_at} & datetime & no & \\
+\rowcolor{teal!18}\multicolumn{4}{l}{\textbf{\texttt{application\_documents}}}\\
+\texttt{application\_id} & char(36) & no & PK, FK $\rightarrow$ applications\\
+\texttt{document\_id} & char(36) & no & PK, FK $\rightarrow$ documents\\
+\texttt{doc\_role} & varchar(20) & no & \\
+\texttt{created\_at} & datetime & no & \\
 \hline
 \end{longtable}}

@@ -20,8 +20,9 @@ cols = q("SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,COLUMN_KEY FROM 
 fks = {(t, c): rt for t, c, rt in q("SELECT TABLE_NAME,COLUMN_NAME,REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE "
                                     "WHERE TABLE_SCHEMA='idp_db' AND REFERENCED_TABLE_NAME IS NOT NULL")}
 JSONCOLS = {'preproc_config', 'bbox', 'before_json', 'after_json'}
-order = ['users', 'documents', 'processing_runs', 'extracted_fields', 'extracted_line_items', 'validation_findings',
-         'reviews', 'field_corrections', 'erp_attempts', 'audit_events', 'system_settings']
+order = ['organizations', 'users', 'documents', 'processing_runs', 'extracted_fields', 'extracted_line_items', 'validation_findings',
+         'reviews', 'field_corrections', 'erp_attempts', 'audit_events', 'system_settings',
+         'listings', 'listing_documents', 'applications', 'application_documents']
 by = {}
 for t, c, ty, nl, k in cols:
     ty = 'json' if c in JSONCOLS else ty.replace('utf8mb4_unicode_ci', '')
@@ -45,7 +46,7 @@ open(os.path.join(out, 'p2_gen_dict.tex'), 'w').write('\n'.join(lines) + '\n')
 
 # ---------- endpoint catalogue ----------
 spec = yaml.safe_load(open('openapi.yaml'))
-ab = {'OPERATOR': 'Op', 'REVIEWER': 'Rev', 'ADMIN': 'Adm', 'public': 'all'}
+ab = {'OPERATOR': 'Op', 'REVIEWER': 'Rev', 'ADMIN': 'Adm', 'COMPANY': 'Co', 'APPLICANT': 'App', 'public': 'all'}
 rows = []
 for path, p in spec['paths'].items():
     for m, o in p.items():

@@ -25,5 +25,15 @@ POST & \texttt{/\allowbreak users} & Adm & Create a user & 201, 400, 403, 409\\
 PATCH & \texttt{/\allowbreak users/\allowbreak \{user\_id\}} & Adm & Change role or deactivate a user & 200, 403, 404\\
 GET & \texttt{/\allowbreak settings} & Adm & Read thresholds and validation settings & 200, 403\\
 PUT & \texttt{/\allowbreak settings/\allowbreak \{setting\_key\}} & Adm & Change one setting (audited) & 200, 400, 403, 404\\
+GET & \texttt{/\allowbreak listings} & Op, Rev, Adm, Co, App & Browse listings (tenders, jobs, internships) & 200, 401\\
+POST & \texttt{/\allowbreak listings} & Co, Adm & Create a listing as a draft & 201, 400, 403\\
+GET & \texttt{/\allowbreak listings/\allowbreak \{listing\_id\}} & Op, Rev, Adm, Co, App & One listing & 200, 404\\
+PATCH & \texttt{/\allowbreak listings/\allowbreak \{listing\_id\}} & Co, Adm & Edit a draft, publish it (OPEN), close or cancel it & 200, 403, 404, 409\\
+POST & \texttt{/\allowbreak listings/\allowbreak \{listing\_id\}/\allowbreak applications} & Co, App & Apply to an OPEN listing before its deadline (one application per person) & 201, 400, 403, 404, 409\\
+GET & \texttt{/\allowbreak listings/\allowbreak \{listing\_id\}/\allowbreak applications} & Co, Adm & Applications received for a listing (publishing company only) & 200, 403, 404\\
+PATCH & \texttt{/\allowbreak applications/\allowbreak \{application\_id\}} & Co, App, Adm & Withdraw (applicant) or change status (publishing company) & 200, 403, 404, 409\\
+GET & \texttt{/\allowbreak applications/\allowbreak mine} & Co, App & My own applications and their status & 200, 401\\
+GET & \texttt{/\allowbreak listings/\allowbreak \{listing\_id\}/\allowbreak comparison} & Co, Adm & Side-by-side comparison of the offers of a tender (extracted price, delivery time, validity) & 200, 403, 404, 409\\
+POST & \texttt{/\allowbreak listings/\allowbreak \{listing\_id\}/\allowbreak award} & Co, Adm & Award a tender to one application and trigger the purchase order to the ERP & 200, 403, 404, 409\\
 \hline
 \end{longtable}}

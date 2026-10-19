@@ -118,10 +118,10 @@ View a document's audit trail & --- & yes & yes\\
 Manage users; change settings & --- & --- & yes\\
 \hline
 \end{longtable}}
-A document that a user may not see is reported as \texttt{404}, not \texttt{403}, so the API does not confirm that it exists.
+A document that a user may not see is reported as \texttt{404}, not \texttt{403}, so the API does not confirm that it exists. The roles Company and Applicant of the tender module have their own permission table in Chapter~\ref{ch:p2tender}.
 
 \section{Endpoint catalogue}
-The table is generated from \texttt{openapi.yaml}. \emph{Roles} abbreviates Operator (Op), Reviewer (Rev) and Administrator (Adm).
+The table is generated from \texttt{openapi.yaml}. \emph{Roles} abbreviates Operator (Op), Reviewer (Rev), Administrator (Adm), Company (Co) and Applicant (App). The ten operations of the tender module (Chapter~\ref{ch:p2tender}) are included.
 \input{p2_gen_api}
 
 \section{Examples}

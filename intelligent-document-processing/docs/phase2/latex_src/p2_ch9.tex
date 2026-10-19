@@ -1,0 +1,114 @@
+\chapter{Extension: Tender and Opportunities Module}\label{ch:p2tender}
+\section{Why this chapter exists}
+After the first version of this specification the project owner proposed an extension: a buyer publishes a call for tenders (\emph{appel d'offres}), companies receive it and apply with an offer, and the offers are processed and compared. A second idea was a board where companies publish jobs and internships and people apply. This chapter records the decision about scope, the shared design that supports both ideas, and the phase in which each part is built.
+
+\begin{infobox}[Scope decision (to be confirmed by the project owner)]
+\textbf{Committed (option B):} the core document-processing system of Chapters~\ref{ch:p2arch} to~\ref{ch:p2sec} plus the tender module. \textbf{Stretch goal (option C):} jobs and internships, built on the same tables only after the core and the tender module work end to end. If the stretch goal is not finished, it is described in the final report as designed and partly built.
+\end{infobox}
+
+\section{Idea and value}
+Every step of a tender ends in a document: the call, the offers, the award. DocuMind already reads, validates and sends documents to an ERP, so the tender module reuses that engine instead of adding a second product.
+\begin{enumerate}
+\item A company (the buyer) publishes a tender with requirements, a budget and a deadline.
+\item Other companies apply before the deadline and attach their offer as a PDF or a scan.
+\item DocuMind reads each offer (supplier, total price, currency, delivery time, validity), validates it and compares the offers side by side.
+\item The buyer selects a winner. The system then sends a purchase order to the ERP through the same adapter used for invoices.
+\end{enumerate}
+A company that answers a tender fills in an offer from a template; the system does not write the offer for it.
+
+\section{Shared design for tenders and jobs}
+Both ideas have the same pattern: someone publishes a listing, others apply, and each application carries documents. The design therefore uses one set of tables.
+\begin{figure}[H]\centering
+\resizebox{\textwidth}{!}{\input{figs/fig_er_tender}}
+\caption{Tables added for the tender module. Each file carried by a listing or an application is an ordinary row of \texttt{documents}, so it uses the same upload, OCR, extraction and review path as an invoice.}\label{fig:p2tender}
+\end{figure}
+
+{\tblstart\small
+\begin{longtable}{L{3.8cm}L{10.0cm}}
+\hdrrow \hdr{Table} & \hdr{Purpose}\\ \endhead
+\texttt{organizations} & A company profile: name (unique), registration number, country and contact e-mail.\\
+\texttt{listings} & A tender, a job or an internship: type, title, description, requirements, budget and currency (tenders), deadline, status, and the winning application once awarded.\\
+\texttt{listing\_documents} & Files that belong to a listing, such as the call document.\\
+\texttt{applications} & One application per person per listing (unique key), with the applying user, the answering company, a cover note and a status.\\
+\texttt{application\_documents} & The files of an application with their role: offer, CV, cover letter or attachment.\\
+\hline
+\end{longtable}}
+Two existing tables change slightly: \texttt{users} gains the roles COMPANY and APPLICANT and an optional \texttt{org\_id}, and \texttt{documents.document\_type} gains the values OFFER and CV.
+
+\section{Roles and permissions}
+{\tblstart\small
+\begin{longtable}{L{6.0cm}C{1.7cm}C{1.7cm}C{1.7cm}C{1.7cm}}
+\hdrrow \hdr{Function} & \hdr{Company} & \hdr{Applicant} & \hdr{Reviewer} & \hdr{Admin}\\ \endhead
+Browse open listings & yes & yes & yes & yes\\
+Create, edit, publish, close or cancel own listing & yes & --- & --- & yes\\
+Apply to an open listing before its deadline & yes & yes & --- & ---\\
+See own applications and withdraw them & yes & yes & --- & ---\\
+See applications received for own listing & yes & --- & --- & yes\\
+Compare offers of own tender; award it & yes & --- & --- & yes\\
+\hline
+\end{longtable}}
+The operator role of Chapter~\ref{ch:p2api} stays internal. Four rules protect the data: a company never sees the offers of other companies; an applicant sees only their own applications; the deadline and the OPEN status are checked by the server, not only by the screen; and a listing or application that a user may not see is reported as \texttt{404}.
+
+\section{Status models}
+{\tblstart\small
+\begin{longtable}{L{3.2cm}L{4.8cm}L{5.8cm}}
+\hdrrow \hdr{Object} & \hdr{States} & \hdr{Main transitions}\\ \endhead
+Listing & DRAFT, OPEN, CLOSED, AWARDED, CANCELLED & DRAFT to OPEN on publish; OPEN to CLOSED at the deadline or by the company; CLOSED to AWARDED on award; DRAFT or OPEN to CANCELLED.\\
+Application & SUBMITTED, UNDER\_REVIEW, SHORTLISTED, ACCEPTED, REJECTED, WITHDRAWN & SUBMITTED to UNDER\_REVIEW when the company opens it; to SHORTLISTED, ACCEPTED or REJECTED by the company; to WITHDRAWN by the applicant while the listing is open.\\
+\hline
+\end{longtable}}
+
+\section{API additions}
+Ten operations are added to \texttt{openapi.yaml} (tags Listings and Applications). Each carries an \texttt{x-phase} field that says in which phase it is built.
+{\tblstart\small
+\begin{longtable}{L{1.5cm}L{5.2cm}L{3.2cm}L{1.6cm}}
+\hdrrow \hdr{Method} & \hdr{Path} & \hdr{Roles} & \hdr{Phase}\\ \endhead
+GET & \texttt{/listings} & all signed in & 5\\
+POST & \texttt{/listings} & Company, Admin & 5\\
+GET & \texttt{/listings/\{id\}} & all signed in & 5\\
+PATCH & \texttt{/listings/\{id\}} & Company, Admin & 5\\
+POST & \texttt{/listings/\{id\}/applications} & Company, Applicant & 5\\
+GET & \texttt{/listings/\{id\}/applications} & Company, Admin & 5\\
+PATCH & \texttt{/applications/\{id\}} & Company, Applicant, Admin & 5\\
+GET & \texttt{/applications/mine} & Company, Applicant & 5\\
+GET & \texttt{/listings/\{id\}/comparison} & Company, Admin & 10\\
+POST & \texttt{/listings/\{id\}/award} & Company, Admin & 12\\
+\hline
+\end{longtable}}
+In the code the route \texttt{/applications/mine} must be declared before \texttt{/applications/\{id\}}, otherwise the word ``mine'' is read as an identifier.
+
+\section{Link to the ERP}
+Awarding a tender creates a purchase order for the winning supplier. This is a new method on the \texttt{ErpAdapter} interface of Chapter~\ref{ch:p2sec}, with the same rules: an idempotency key, one transaction that locks the listing, and every attempt stored in \texttt{erp\_attempts}. Whether Odoo accepts the purchase order in the form assumed here is not verified and depends on the Odoo version (open decision P2-D1). The mock ERP implements it first.
+
+\clearpage
+\section{Where each part is built}\label{sec:p2tenderphases}
+{\tblstart\small
+\begin{longtable}{L{1.6cm}L{4.4cm}L{7.8cm}}
+\hdrrow \hdr{Phase} & \hdr{Name in the plan} & \hdr{Tender and opportunities work}\\ \endhead
+2 & System design & This chapter, the five new tables, the new roles and the ten API operations (done in this version).\\
+4 & Database and backend foundation & Create the five tables and the new roles; models and migration; sign-up and login for companies and applicants; company isolation checks.\\
+5 & Document upload and storage & Listing and application endpoints; applicants upload offer files through the existing upload module; deadline and one-application rules.\\
+9 & Information extraction & Offer fields: supplier, total price, currency, delivery time, validity. CV fields (name, skills, education) for the stretch goal.\\
+10 & Validation and confidence scoring & Offer validation (complete, in budget currency, still valid, deadline respected) and the comparison endpoint.\\
+11 & Human review and correction & Review of low-confidence offers before they enter the comparison.\\
+12 & ERP integration & Award a tender and send the purchase order to the mock ERP, then Odoo.\\
+13 & Web dashboard & Screens: browse listings, apply, my applications, publish a listing, compare offers, award.\\
+14, 15 & Testing; security & Tests for isolation, deadlines and duplicate applications; security checks on the new endpoints.\\
+After 13 & Stretch goal (option C) & Jobs and internships: listing type JOB and INTERNSHIP in the interface, search, simple CV reading. Only if the core and the tender flow work.\\
+\hline
+\end{longtable}}
+
+\section{Open decisions and risks}
+{\tblstart\small
+\begin{longtable}{L{1.4cm}L{6.4cm}L{6.0cm}}
+\hdrrow \hdr{No.} & \hdr{Decision} & \hdr{Effect}\\ \endhead
+P2-D7 & Confirm option B as the committed scope and option C as a stretch goal. & Sets how much of the plan is fixed.\\
+P2-D8 & May one user act both as a company and as an applicant, or are accounts separate? & Changes the role model and the login flow.\\
+P2-D9 & Are tenders public (any signed-in user) or by invitation only? & Adds an invitation table if by invitation.\\
+P2-D10 & Which criteria compare offers (lowest price only, or a weighted score)? & Changes the comparison endpoint.\\
+\hline
+\end{longtable}}
+The main risk is time: the custom OCR model must still be trained and evaluated honestly, so the tender module reuses the existing engine and the jobs board may stay unfinished.
+
+\section{Verification performed}
+The extended \texttt{schema.sql} loaded into an empty MariaDB 10.11 database (\nTables{} tables). A full tender was inserted, then five new invalid operations were refused: a repeated application to one listing, application status DONE, listing type SHOP, application file role PHOTO, and a user with an unknown organization. The nine tests of Section~\ref{sec:p2dbtests} were refused again. It has not been run on MySQL 8.0, and the new operations exist only as a validated contract.

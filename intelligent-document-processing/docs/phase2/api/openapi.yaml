@@ -15,6 +15,8 @@ tags:
   - name: Review
   - name: ERP
   - name: Admin
+  - name: Listings
+  - name: Applications
 security:
   - bearerAuth: []
 paths:
@@ -435,6 +437,203 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /listings:
+    get:
+      tags: [Listings]
+      summary: Browse listings (tenders, jobs, internships)
+      description: "Signed-in users see OPEN listings. A COMPANY also sees its own drafts."
+      x-roles: [OPERATOR, REVIEWER, ADMIN, COMPANY, APPLICANT]
+      x-phase: 5
+      parameters:
+        - {name: listing_type, in: query, schema: {$ref: "#/components/schemas/ListingType"}}
+        - {name: status, in: query, schema: {$ref: "#/components/schemas/ListingStatus"}}
+        - {name: q, in: query, description: "Search title and description", schema: {type: string, maxLength: 100}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        "200":
+          description: A page of listings
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ListingPage"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+    post:
+      tags: [Listings]
+      summary: Create a listing as a draft
+      x-roles: [COMPANY, ADMIN]
+      x-phase: 5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListingCreate"}
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Listing"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /listings/{listing_id}:
+    parameters:
+      - {$ref: "#/components/parameters/ListingId"}
+    get:
+      tags: [Listings]
+      summary: One listing
+      x-roles: [OPERATOR, REVIEWER, ADMIN, COMPANY, APPLICANT]
+      x-phase: 5
+      responses:
+        "200":
+          description: The listing
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Listing"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      tags: [Listings]
+      summary: Edit a draft, publish it (OPEN), close or cancel it
+      x-roles: [COMPANY, ADMIN]
+      x-phase: 5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListingUpdate"}
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Listing"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /listings/{listing_id}/applications:
+    parameters:
+      - {$ref: "#/components/parameters/ListingId"}
+    post:
+      tags: [Applications]
+      summary: Apply to an OPEN listing before its deadline (one application per person)
+      x-roles: [COMPANY, APPLICANT]
+      x-phase: 5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ApplicationCreate"}
+      responses:
+        "201":
+          description: Application submitted
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Application"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+    get:
+      tags: [Applications]
+      summary: Applications received for a listing (publishing company only)
+      x-roles: [COMPANY, ADMIN]
+      x-phase: 5
+      responses:
+        "200":
+          description: Applications, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/Application"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /applications/{application_id}:
+    parameters:
+      - {name: application_id, in: path, required: true, schema: {type: string, format: uuid}}
+    patch:
+      tags: [Applications]
+      summary: Withdraw (applicant) or change status (publishing company)
+      x-roles: [COMPANY, APPLICANT, ADMIN]
+      x-phase: 5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: {$ref: "#/components/schemas/ApplicationStatus"}
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Application"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /applications/mine:
+    get:
+      tags: [Applications]
+      summary: My own applications and their status
+      x-roles: [COMPANY, APPLICANT]
+      x-phase: 5
+      responses:
+        "200":
+          description: Applications, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/Application"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+  /listings/{listing_id}/comparison:
+    parameters:
+      - {$ref: "#/components/parameters/ListingId"}
+    get:
+      tags: [Listings]
+      summary: Side-by-side comparison of the offers of a tender (extracted price, delivery time, validity)
+      description: "Needs extraction and validation (Phases 9 and 10); the Phase 5 version returns the applications without extracted values."
+      x-roles: [COMPANY, ADMIN]
+      x-phase: 10
+      responses:
+        "200":
+          description: One row per offer
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/OfferComparisonRow"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /listings/{listing_id}/award:
+    parameters:
+      - {$ref: "#/components/parameters/ListingId"}
+    post:
+      tags: [Listings]
+      summary: Award a tender to one application and trigger the purchase order to the ERP
+      x-roles: [COMPANY, ADMIN]
+      x-phase: 12
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [application_id]
+              properties:
+                application_id: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Listing is now AWARDED
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Listing"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
 components:
   securitySchemes:
     bearerAuth:
@@ -442,6 +641,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    ListingId:
+      name: listing_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
     DocumentId:
       name: document_id
       in: path
@@ -496,7 +700,7 @@ components:
       properties:
         status: {type: string, example: healthy}
         database: {type: string, example: connected}
-    Role: {type: string, enum: [OPERATOR, REVIEWER, ADMIN]}
+    Role: {type: string, enum: [OPERATOR, REVIEWER, ADMIN, COMPANY, APPLICANT]}
     DocumentStatus:
       type: string
       enum: [UPLOADED, QUEUED, PROCESSING, NEEDS_REVIEW, APPROVED, REJECTED, ERP_SENT, ERP_FAILED, FAILED]
@@ -666,3 +870,85 @@ components:
         setting_value: {type: string}
         description: {type: string, nullable: true}
         updated_at: {type: string, format: date-time}
+    ListingType: {type: string, enum: [TENDER, JOB, INTERNSHIP]}
+    ListingStatus: {type: string, enum: [DRAFT, OPEN, CLOSED, AWARDED, CANCELLED]}
+    ApplicationStatus: {type: string, enum: [SUBMITTED, UNDER_REVIEW, SHORTLISTED, ACCEPTED, REJECTED, WITHDRAWN]}
+    Listing:
+      type: object
+      properties:
+        listing_id: {type: string, format: uuid}
+        org_id: {type: string, format: uuid}
+        organization_name: {type: string}
+        listing_type: {$ref: "#/components/schemas/ListingType"}
+        title: {type: string}
+        description: {type: string}
+        requirements: {type: string, nullable: true}
+        location: {type: string, nullable: true}
+        budget_amount: {type: number, nullable: true}
+        currency: {type: string, nullable: true, example: XAF}
+        deadline: {type: string, format: date-time}
+        status: {$ref: "#/components/schemas/ListingStatus"}
+        awarded_application_id: {type: string, format: uuid, nullable: true}
+        created_at: {type: string, format: date-time}
+    ListingCreate:
+      type: object
+      required: [listing_type, title, description, deadline]
+      properties:
+        listing_type: {$ref: "#/components/schemas/ListingType"}
+        title: {type: string, maxLength: 200}
+        description: {type: string}
+        requirements: {type: string}
+        location: {type: string, maxLength: 120}
+        budget_amount: {type: number, minimum: 0}
+        currency: {type: string, minLength: 3, maxLength: 3}
+        deadline: {type: string, format: date-time}
+    ListingUpdate:
+      type: object
+      properties:
+        title: {type: string, maxLength: 200}
+        description: {type: string}
+        requirements: {type: string}
+        deadline: {type: string, format: date-time}
+        status: {type: string, enum: [OPEN, CLOSED, CANCELLED]}
+    ListingPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/Listing"}
+        page: {type: integer}
+        page_size: {type: integer}
+        total: {type: integer}
+    ApplicationCreate:
+      type: object
+      properties:
+        cover_note: {type: string, maxLength: 2000}
+        document_ids:
+          type: array
+          description: "Documents already uploaded by the applicant (offer PDF, CV)"
+          items: {type: string, format: uuid}
+          minItems: 1
+    Application:
+      type: object
+      properties:
+        application_id: {type: string, format: uuid}
+        listing_id: {type: string, format: uuid}
+        applicant_id: {type: string, format: uuid}
+        applicant_org_id: {type: string, format: uuid, nullable: true}
+        status: {$ref: "#/components/schemas/ApplicationStatus"}
+        cover_note: {type: string, nullable: true}
+        document_ids:
+          type: array
+          items: {type: string, format: uuid}
+        submitted_at: {type: string, format: date-time}
+    OfferComparisonRow:
+      type: object
+      properties:
+        application_id: {type: string, format: uuid}
+        supplier: {type: string}
+        total_price: {type: number, nullable: true}
+        currency: {type: string, nullable: true}
+        delivery_days: {type: integer, nullable: true}
+        valid_until: {type: string, format: date, nullable: true}
+        review_required: {type: boolean}
+        findings: {type: integer, description: "Number of open validation findings"}
