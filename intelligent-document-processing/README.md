@@ -1,14 +1,16 @@
-# DocuMind AI (Intelligent Document Processing) — Phase 1 project folder
+# DocuMind AI (Intelligent Document Processing) — project folder (Phases 1 to 4)
 
-Contents of this Phase 1 folder:
+Contents:
 
-- `backend/` : FastAPI backend foundation (settings, health checks, 4 passing tests, Dockerfile).
+- `backend/` : FastAPI backend: health checks, MySQL models and Alembic migration (16 tables), sign-up, login, roles, audit, e-mail service. 67 tests.
+- `frontend/` : React + Vite starter that shows API and database status.
+- `docs/` : Phase 1 and Phase 2 specifications, the project design document, the phase map and the API contract.
+- `scripts/` : `check_phase3.py` (environment) and `check_phase4.py` (database and auth).
 - `docker-compose.yml` : backend + MySQL 8 (written, not yet run on your machine).
-- `docs/` : Phase 1 requirements specification and the full design document (PDF + LaTeX sources).
 
-**How to run it (with and without Docker): see `RUNNING.md`.**
+**How to run it:** `RUNNING.md` (Phase 1 start), `PHASE3_SETUP.md` (environment), `PHASE4_GUIDE.md` (database and login).
 
-**Status:** Phase 1 documents are drafted and wait for supervisor decisions (see the last chapter of the Phase 1 PDF). The backend covers only the start of Phases 3--4. No OCR model has been trained.
+**Status:** Phases 1 to 4 are built. Phase 4 is tested in a MariaDB test environment, not yet on your MySQL 8. No OCR model has been trained yet (Phase 7 onward).
 
 ## Structure
 
@@ -61,4 +63,4 @@ Then open http://127.0.0.1:8000/api/v1/health/db: it should report `connected`.
 
 ## Next phase
 
-Phase 2: SQLAlchemy models (users, documents, extracted fields, reviews, audit events) and Alembic migrations.
+Phase 5: secure document upload and storage, listing and application endpoints (see `PHASE4_GUIDE.md` for what Phase 4 added).
